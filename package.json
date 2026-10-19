@@ -1,0 +1,14 @@
+{
+  "name": "ux-design-academy",
+  "version": "1.0.0",
+  "private": true,
+  "description": "A free, self-guided UI/UX design academy: structured lessons, exercises, portfolio projects, templates and a glossary, generated as a static site with no dependencies.",
+  "type": "module",
+  "scripts": {
+    "build": "node learn-src/build.mjs",
+    "check": "node learn-src/build.mjs --check",
+    "test": "node --test 'learn-src/test/*.test.mjs'",
+    "serve": "python3 -m http.server 8000"
+  },
+  "engines": { "node": ">=20" }
+}
