@@ -30,6 +30,7 @@ import career from './content/career.mjs';
 import paths from './content/paths.mjs';
 import { videos } from './content/videos.mjs';
 import { AcademyHeader, esc, lessonUrl, courseUrl } from './components.mjs';
+import { ogImage } from './og-image.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(HERE, '..');
@@ -42,16 +43,10 @@ const DIST = join(ROOT, 'dist');
 const OUT = DEPLOY ? DIST : join(ROOT, 'learn');
 const stripBase = (/** @type {string} */ p) => (DEPLOY ? p.replace(/^\/learn/, '') : p);
 
-/* The public origin. In a deploy build this defaults to the Vercel
-   production domain of the project; everywhere else it stays on the
-   portfolio. shell.mjs and pages.mjs read it from the environment, so it
-   has to be set before they are imported. */
-if (DEPLOY && !process.env.SITE_URL) {
-  const host = process.env.VERCEL_PROJECT_PRODUCTION_URL || (process.env.VERCEL_URL ? new URL(process.env.VERCEL_URL).host : '');
-  if (host) process.env.SITE_URL = `https://${host}`;
-}
-
-const { loadChrome, page, SITE } = await import('./shell.mjs');
+/* The public origin. shell.mjs reads it from the environment: SITE_URL
+   wins, otherwise it follows the Vercel project, and a local build
+   claims only the local address. */
+const { page, SITE, chrome } = await import('./shell.mjs');
 const P = await import('./pages.mjs');
 
 /* Rewriting the academy's own links. In a deploy build the site lives
@@ -212,7 +207,6 @@ if (errors.length) {
 const hash = createHash('sha1');
 for (const f of ['css/learn.css', 'js/learn/app.js', 'js/learn/store.mjs']) if (existsSync(join(ROOT, f))) hash.update(readFileSync(join(ROOT, f)));
 const version = hash.digest('hex').slice(0, 8);
-const chrome = loadChrome(ROOT);
 
 /** @type {{ path: string, active: string, title: string, description: string, body: string, jsonld?: object, noindex?: boolean, query?: string }[]} */
 const pages = [];
@@ -322,6 +316,10 @@ if (!CHECK_ONLY) {
       mkdirSync(dirname(dest), { recursive: true });
       copyFileSync(src, dest);
     }
+    // The social preview image, drawn at build time so the academy owns it.
+    const ogPath = join(DIST, 'images/og-default.png');
+    mkdirSync(dirname(ogPath), { recursive: true });
+    writeFileSync(ogPath, ogImage());
     // The browser script fetches the catalog and the search index by path.
     if (DEPLOY) {
       const appPath = join(DIST, 'js/learn/app.js');

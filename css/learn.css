@@ -749,11 +749,10 @@ a.la-cont:hover { border-color: var(--la-ink); }
 
 /* ---------------------------------------- standalone build (no portfolio chrome) */
 .la-body { margin: 0; font-family: 'Inter Tight', Inter, system-ui, -apple-system, 'Segoe UI', sans-serif; -webkit-font-smoothing: antialiased; }
-.la-solo, .la-solo-foot { background: var(--la-ink); color: #fff; }
+.la-solo-foot { background: var(--la-ink); color: #fff; }
 .la-solo__in { max-width: 80rem; margin: 0 auto; padding: .9rem 1.5rem; display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: .5rem 1.5rem; }
-.la-solo__brand { color: #fff; font-weight: 600; letter-spacing: -0.02em; text-decoration: none; }
-.la-solo__by, .la-solo-foot p { font-size: .88rem; color: rgba(255, 255, 255, .75); }
-.la-solo a, .la-solo-foot a { color: #fff; }
+.la-solo-foot p { font-size: .88rem; color: rgba(255, 255, 255, .75); }
+.la-solo-foot a { color: #fff; }
 .la-solo-foot .la-solo__in { padding: 2rem 1.5rem; }
 
 /* =====================================================================
