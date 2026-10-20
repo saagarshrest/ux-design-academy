@@ -36,7 +36,11 @@ const ROOT = resolve(HERE, '..');
 const CHECK_ONLY = process.argv.includes('--check');
 const DEPLOY = process.argv.includes('--deploy');
 const DIST = join(ROOT, 'dist');
-const OUT = DEPLOY ? join(DIST, 'learn') : join(ROOT, 'learn');
+/* A deploy build serves the academy from the root of the domain, so the
+   pages are written without the /learn prefix. The default build keeps
+   them under /learn, for the portfolio the academy is embedded in. */
+const OUT = DEPLOY ? DIST : join(ROOT, 'learn');
+const stripBase = (/** @type {string} */ p) => (DEPLOY ? p.replace(/^\/learn/, '') : p);
 
 /* The public origin. In a deploy build this defaults to the Vercel
    production domain of the project; everywhere else it stays on the
@@ -49,6 +53,15 @@ if (DEPLOY && !process.env.SITE_URL) {
 
 const { loadChrome, page, SITE } = await import('./shell.mjs');
 const P = await import('./pages.mjs');
+
+/* Rewriting the academy's own links. In a deploy build the site lives
+   at the root of the domain, so "/learn/courses/" becomes "/courses/".
+   Only link targets are touched, never prose. */
+const escapeRe = (/** @type {string} */ s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const rebaseHtml = (/** @type {string} */ text) => (DEPLOY
+  ? text.replace(new RegExp(`${escapeRe(SITE)}/learn/`, 'g'), `${SITE}/`).replace(/="\/learn\//g, '="/')
+  : text);
+const rebaseCode = (/** @type {string} */ text) => (DEPLOY ? text.replace(/(['"])\/learn\//g, '$1/') : text);
 
 /** @typedef {import('./types').Course} Course */
 /** @typedef {import('./types').Lesson} Lesson */
@@ -278,9 +291,9 @@ if (!CHECK_ONLY) {
   rmSync(OUT, { recursive: true, force: true });
   if (DEPLOY) rmSync(DIST, { recursive: true, force: true });
   for (const p of pages) {
-    const file = join(SITE_ROOT, p.path, 'index.html');
+    const file = join(SITE_ROOT, stripBase(p.path), 'index.html');
     mkdirSync(dirname(file), { recursive: true });
-    writeFileSync(file, page(chrome, { ...p, header: AcademyHeader(p.active), version }));
+    writeFileSync(file, rebaseHtml(page(chrome, { ...p, header: AcademyHeader(p.active), version })));
   }
   // Site-wide not-found page (GitHub Pages serves /404.html for any missing path).
   const notFound = page(chrome, {
@@ -293,11 +306,11 @@ if (!CHECK_ONLY) {
   <div class="la-actions"><a class="la-btn" href="/learn/roadmap/">Academy roadmap</a><a class="la-btn la-btn--ghost" href="/learn/search/">Search the academy</a><a class="la-btn la-btn--ghost" href="/learn/">Academy home</a></div>
 </div></header>`,
   });
-  writeFileSync(join(SITE_ROOT, '404.html'), notFound);
-  writeFileSync(join(OUT, 'catalog.json'), JSON.stringify(catalog));
-  writeFileSync(join(OUT, 'search-index.json'), JSON.stringify(index));
+  writeFileSync(join(SITE_ROOT, '404.html'), rebaseHtml(notFound));
+  writeFileSync(join(OUT, 'catalog.json'), rebaseCode(JSON.stringify(catalog)));
+  writeFileSync(join(OUT, 'search-index.json'), rebaseCode(JSON.stringify(index)));
 
-  const sitemapUrls = pages.filter((p) => !p.noindex).map((p) => `  <url>\n    <loc>${SITE}${p.path}</loc>\n    <changefreq>monthly</changefreq>\n    <priority>${p.path === '/learn/' ? '0.8' : '0.6'}</priority>\n  </url>`).join('\n');
+  const sitemapUrls = pages.filter((p) => !p.noindex).map((p) => `  <url>\n    <loc>${SITE}${stripBase(p.path)}</loc>\n    <changefreq>monthly</changefreq>\n    <priority>${p.path === '/learn/' ? '0.8' : '0.6'}</priority>\n  </url>`).join('\n');
 
   if (DEPLOY) {
     /* A deploy build has to stand on its own: copy the stylesheet and the
@@ -309,29 +322,11 @@ if (!CHECK_ONLY) {
       mkdirSync(dirname(dest), { recursive: true });
       copyFileSync(src, dest);
     }
-    // Root entry point: the academy itself lives under /learn/.
-    writeFileSync(join(DIST, 'index.html'), `<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>UI/UX Design Academy</title>
-<meta name="description" content="A free, self-guided UI/UX design academy: a structured roadmap, written lessons with examples, exercises, portfolio projects, templates and a glossary.">
-<link rel="icon" href="/favicon.svg" type="image/svg+xml">
-<link rel="canonical" href="${SITE}/learn/">
-<meta http-equiv="refresh" content="0; url=/learn/">
-<link rel="stylesheet" href="/css/learn.css?v=${version}">
-</head>
-<body class="la-body" style="display:grid;place-items:center;min-height:100vh;margin:0;text-align:center">
-  <main class="la-wrap la-narrow">
-    <p class="la-eyebrow">UI/UX Design Academy</p>
-    <h1 class="la-h1" style="max-width:none">Taking you to the <em>academy.</em></h1>
-    <p class="la-lead" style="margin-left:auto;margin-right:auto">If nothing happens, <a href="/learn/">open the academy</a>.</p>
-  </main>
-  <script>window.location.replace('/learn/');</script>
-</body>
-</html>
-`);
+    // The browser script fetches the catalog and the search index by path.
+    if (DEPLOY) {
+      const appPath = join(DIST, 'js/learn/app.js');
+      writeFileSync(appPath, rebaseCode(readFileSync(appPath, 'utf8')));
+    }
     writeFileSync(join(DIST, 'robots.txt'), `User-agent: *\nAllow: /\n\nSitemap: ${SITE}/sitemap.xml\n`);
     writeFileSync(join(DIST, 'sitemap.xml'), `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${sitemapUrls}\n</urlset>\n`);
   } else {

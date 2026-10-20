@@ -39,16 +39,21 @@ npm run serve   # then open http://localhost:8000/learn/
 
 The repository is ready to deploy: `vercel.json` builds the site with `npm run build:vercel` and publishes `/dist`. Import the repository in Vercel and deploy; no settings need changing.
 
+A deploy build serves the academy **from the root of the domain**, so the website is simply `https://your-domain/`. The pages are written without the `/learn` prefix and the links inside them are rewritten to match, while the default build keeps everything under `/learn` for the portfolio the academy is embedded in.
+
 What the deploy build produces:
 
 | Path in `/dist` | Purpose |
 |---|---|
-| `index.html` | Entry point that sends visitors to `/learn/` |
-| `learn/**` | Every academy page, plus `catalog.json` and `search-index.json` |
+| `index.html` | The academy home page |
+| `courses/`, `lessons/`, `practice/`, `projects/`, `resources/`, `glossary/`, `roadmap/`, `career/`, `saved/`, `search/` | Every other page |
+| `catalog.json`, `search-index.json` | The lesson catalogue and the search index the browser fetches |
 | `css/learn.css`, `js/learn/*` | The stylesheet and the browser script the pages load |
 | `favicon.svg` | Site icon |
 | `404.html` | Not-found page |
 | `robots.txt`, `sitemap.xml` | Crawling hints, pointing at the sitemap |
+
+Any old `/learn/...` address is redirected to its clean equivalent, so links from elsewhere keep working.
 
 Build-time environment variables, all optional:
 
@@ -59,8 +64,6 @@ Build-time environment variables, all optional:
 | `OG_IMAGE_URL` | Absolute URL of the social preview image |
 | `ADSENSE_CLIENT` | AdSense publisher id (`ca-pub-...`). Without it the site loads no ad code at all |
 | `ADSENSE_SLOT` | AdSense ad unit id. Needs `ADSENSE_CLIENT`; a labelled slot then appears on the home page and under each lesson video |
-
-The academy is served from `/learn/` on every host, because all its URLs are absolute (`/learn/...`). The root of the deployment redirects there.
 
 ### The custom domain
 
@@ -106,5 +109,5 @@ The build fails if content is invalid, for example a duplicate slug, a missing l
 ## Notes
 
 - Generated output (`/learn/`, `/404.html`, `/dist/`) is not committed; run the build to produce it.
-- The site uses absolute `/learn/...` URLs, so serve it from a domain root.
+- The default build uses absolute `/learn/...` URLs, so serve it from a domain root. The deploy build rewrites them to sit at the root of the domain.
 - External resources are third-party content and may change.
