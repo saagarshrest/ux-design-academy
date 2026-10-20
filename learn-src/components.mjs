@@ -307,14 +307,43 @@ export const fmtDuration = (/** @type {number} */ seconds) => {
 /**
  * VideoPlayer: a third-party video at the top of a lesson. The embed is
  * lazy, uses the privacy-friendly nocookie domain and never autoplays.
- * app.js listens for the end of the video and records it as watched.
+ *
+ * `origin` is passed to YouTube, as its documentation asks: it proves
+ * the page is a real embedder and stops another page from hijacking the
+ * player through postMessage. The embed also asks for the native
+ * controls explicitly, and the frame is kept large enough for YouTube to
+ * draw them (it hides the bar below 200px tall).
+ *
+ * app.js attaches the control bar underneath: play/pause, a scrubber,
+ * the time, mute, playback speed and full screen. It uses the YouTube
+ * IFrame Player API, which it loads only on pages that have a video.
  */
-export function VideoPlayer(/** @type {import('./types').Video} */ v, slug = '') {
-  return `<figure class="la-player" data-video-slug="${esc(slug)}" data-video-id="${esc(v.id)}">
+export function VideoPlayer(/** @type {import('./types').Video} */ v, slug = '', origin = '') {
+  const params = new URLSearchParams({ rel: '0', controls: '1', playsinline: '1', enablejsapi: '1' });
+  if (origin) params.set('origin', origin.replace(/\/+$/, ''));
+  const src = `https://www.youtube-nocookie.com/embed/${esc(v.id)}?${params.toString()}`;
+  return `<figure class="la-player" data-video-slug="${esc(slug)}" data-video-id="${esc(v.id)}" data-video-seconds="${v.seconds}">
   <div class="la-player__frame">
-    <iframe src="https://www.youtube-nocookie.com/embed/${esc(v.id)}?rel=0&amp;modestbranding=1&amp;playsinline=1&amp;enablejsapi=1"
+    <iframe src="${esc(src)}"
       title="${esc(v.title)}" loading="lazy" referrerpolicy="strict-origin-when-cross-origin"
       allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+  </div>
+  <div class="la-vbar" data-vbar>
+    <button type="button" class="la-vbar__btn" data-vplay aria-label="Play the video" data-icon="play">
+      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="currentColor" data-vplay-icon><path d="M8 5.5v13l11-6.5z"/></svg>
+    </button>
+    <span class="la-vbar__time" data-vtime aria-live="off">0:00</span>
+    <input class="la-vbar__seek" type="range" min="0" max="1000" value="0" step="1" data-vseek aria-label="Seek through the video" disabled>
+    <span class="la-vbar__time" data-vdur>${fmtDuration(v.seconds)}</span>
+    <button type="button" class="la-vbar__btn" data-vmute aria-label="Mute the video" data-icon="mute">
+      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" data-vmute-icon>
+        <path d="M4 9.5h3l4-3.5v12l-4-3.5H4z"/><path d="M15.5 9.2a4 4 0 0 1 0 5.6"/><path d="M18 6.8a7.5 7.5 0 0 1 0 10.4"/>
+      </svg>
+    </button>
+    <button type="button" class="la-vbar__btn la-vbar__rate" data-vrate aria-label="Change the playback speed">1×</button>
+    <button type="button" class="la-vbar__btn" data-vfull aria-label="Watch full screen">
+      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/></svg>
+    </button>
   </div>
   <figcaption class="la-player__cap">
     <p class="la-player__meta"><span class="la-tag la-tag--video">Watch</span><span class="la-player__chan">${esc(v.channel)}</span><span class="la-player__len">${fmtDuration(v.seconds)}</span><span class="la-player__watched" data-video-watched hidden>Watched</span></p>

@@ -267,7 +267,7 @@ export function lessonPage(d) {
   const figure = b.figure ? `<figure class="la-fig">${b.figure.html}<figcaption>${esc(b.figure.caption)}</figcaption></figure>` : '';
   const ex = b.exercise;
   const completeBtn = (/** @type {string} */ where) => `<button type="button" class="la-btn${where === 'top' ? ' la-btn--ghost' : ''}" data-complete="${l.slug}" aria-pressed="false"><span data-complete-label>Mark lesson complete</span></button>`;
-  const video = d.video ? VideoPlayer(d.video, l.slug) : '';
+  const video = d.video ? VideoPlayer(d.video, l.slug, SITE) : '';
   const body = `
 <header class="la-hero la-hero--lesson"><div class="la-wrap">
   ${Breadcrumbs([{ label: 'Learn', href: '/learn/' }, { label: `Stage ${c.stage}: ${c.title}`, href: courseUrl(c.slug) }, { label: l.title }])}

@@ -621,6 +621,21 @@ a.la-cont:hover { border-color: var(--la-ink); }
 .la-player__legal { font-size: .78rem; color: var(--la-mute); }
 .la-tag--video { background: var(--la-ink); border-color: var(--la-ink); color: #fff; }
 
+/* the control bar under the player */
+.la-vbar { display: flex; align-items: center; gap: .55rem; padding: .55rem .7rem; border-top: 1px solid var(--la-line); background: var(--la-paper); }
+.la-vbar__btn { display: grid; place-content: center; width: 36px; height: 36px; border-radius: 9999px; border: 0; background: transparent; color: var(--la-ink); cursor: pointer; flex: none; }
+.la-vbar__btn:hover { background: var(--la-soft); }
+.la-vbar__btn:disabled { opacity: .35; cursor: default; }
+.la-vbar__btn[data-icon="play"] svg { fill: currentColor; }
+.la-vbar__rate { width: auto; min-width: 40px; padding: 0 .5rem; font-size: .82rem; font-weight: 600; }
+.la-vbar__time { font-size: .78rem; color: var(--la-mute); font-variant-numeric: tabular-nums; flex: none; min-width: 2.6em; text-align: center; }
+.la-vbar__seek { flex: 1; min-width: 3rem; height: 24px; accent-color: var(--la-acc); cursor: pointer; }
+.la-vbar__seek:disabled { cursor: default; opacity: .4; }
+.la-vbar__seek::-webkit-slider-runnable-track { height: 4px; border-radius: 9999px; background: rgba(10, 10, 10, .16); }
+.la-vbar__seek::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; margin-top: -5px; border-radius: 9999px; background: var(--la-acc); border: 2px solid #fff; box-shadow: 0 1px 3px rgba(10, 10, 10, .3); }
+.la-vbar__seek::-moz-range-track { height: 4px; border-radius: 9999px; background: rgba(10, 10, 10, .16); }
+.la-vbar__seek::-moz-range-thumb { width: 14px; height: 14px; border-radius: 9999px; background: var(--la-acc); border: 2px solid #fff; }
+
 /* --------------------------------------------------------- syllabus */
 .la-srows { display: grid; gap: .5rem; }
 .la-srow { display: grid; grid-template-columns: 2.2rem minmax(0, 1fr); gap: .9rem; align-items: start; padding: .95rem 1rem; border: 1px solid var(--la-line); border-radius: 12px; background: var(--la-paper); transition: border-color .2s, background .2s; }
@@ -800,9 +815,15 @@ a.la-cont:hover { border-color: var(--la-ink); }
 
     /* video behaves like a native player */
     .la-player { border-radius: 14px; margin-bottom: 1.6rem; }
+    /* YouTube hides its own control bar when the frame is under 200px
+       tall, so the player is given a taller shape on a phone. */
+    .la-player__frame { aspect-ratio: 4 / 3; }
     .la-player__cap { padding: .85rem .95rem 1rem; }
     .la-player__title { font-size: .98rem; }
     .la-player__note { font-size: .86rem; }
+    .la-vbar { gap: .35rem; padding: .45rem .5rem; }
+    .la-vbar__btn { width: 34px; height: 34px; }
+    .la-vbar__time { font-size: .72rem; min-width: 2.2em; }
 
     /* course header */
     .la-coursehead { padding: 1.6rem 0 2rem; }

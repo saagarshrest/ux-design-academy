@@ -114,50 +114,178 @@ function initLesson() {
 }
 
 /* ---------------------------------------------------------- video player */
+const PLAY_ICON = '<path d="M8 5.5v13l11-6.5z"/>';
+const PAUSE_ICON = '<path d="M7.5 5h3v14h-3zM13.5 5h3v14h-3z"/>';
+const MUTE_ICON = '<path d="M4 9.5h3l4-3.5v12l-4-3.5H4z"/><path d="M15.5 9.2a4 4 0 0 1 0 5.6"/><path d="M18 6.8a7.5 7.5 0 0 1 0 10.4"/>';
+const SOUND_ICON = '<path d="M4 9.5h3l4-3.5v12l-4-3.5H4z"/><path d="M15.5 9.2a4 4 0 0 1 0 5.6"/><path d="M18 6.8a7.5 7.5 0 0 1 0 10.4"/><path d="M4 4l16 16" stroke-linecap="round"/>';
+const RATES = [1, 1.25, 1.5, 0.75];
+
+const clock = (/** @type {number} */ seconds) => {
+  const s = Math.max(0, Math.floor(seconds || 0));
+  const m = Math.floor(s / 60);
+  return `${m}:${String(s % 60).padStart(2, '0')}`;
+};
+
 /**
- * Mark a lesson's video as watched once it has played to the end. The
- * player is asked to report its state through postMessage, so no extra
- * script is loaded from YouTube beyond the embed itself.
+ * The YouTube IFrame Player API, loaded once and only on pages that
+ * have a video. It is what gives us play/pause, seeking, speed and the
+ * current time. If it never arrives, the native YouTube controls in the
+ * embed still work and our bar is removed.
  */
-function initVideos() {
-  const markWatched = (fig) => {
+let ytApi = null;
+function loadYouTubeApi() {
+  if (ytApi) return ytApi;
+  ytApi = new Promise((resolve) => {
+    if (window.YT && window.YT.Player) { resolve(window.YT); return; }
+    const previous = window.onYouTubeIframeAPIReady;
+    window.onYouTubeIframeAPIReady = () => { if (previous) previous(); resolve(window.YT); };
+    const tag = document.createElement('script');
+    tag.src = 'https://www.youtube.com/iframe_api';
+    tag.async = true;
+    document.head.appendChild(tag);
+    // Never leave the bar half working.
+    setTimeout(() => resolve(window.YT), 10000);
+  });
+  return ytApi;
+}
+
+/**
+ * Keep the embed's origin parameter in step with the page. YouTube only
+ * accepts player commands from the origin named in the URL, so a build
+ * made for one host must still work when it is served from another.
+ */
+function syncOrigin(/** @type {HTMLIFrameElement} */ frame) {
+  try {
+    const url = new URL(frame.src);
+    if (url.searchParams.get('origin') === location.origin) return;
+    url.searchParams.set('origin', location.origin);
+    frame.src = url.toString();
+  } catch { /* leave the embed as it is */ }
+}
+
+/**
+ * Wire up one video: the control bar, the watched flag and the state
+ * the player reports back to us.
+ */
+async function setupVideo(/** @type {HTMLElement} */ fig) {
+  const slug = /** @type {string} */ (fig.dataset.videoSlug);
+  const frame = /** @type {HTMLIFrameElement | null} */ ($('iframe', fig));
+  if (!frame) return;
+  syncOrigin(frame);
+  const bar = $('[data-vbar]', fig);
+  const playBtn = $('[data-vplay]', fig);
+  const playIcon = $('[data-vplay-icon]', fig);
+  const seek = /** @type {HTMLInputElement | null} */ ($('[data-vseek]', fig));
+  const timeEl = $('[data-vtime]', fig);
+  const durEl = $('[data-vdur]', fig);
+  const muteBtn = $('[data-vmute]', fig);
+  const muteIcon = $('[data-vmute-icon]', fig);
+  const rateBtn = $('[data-vrate]', fig);
+  const fullBtn = $('[data-vfull]', fig);
+  const markWatched = () => {
     const flag = $('[data-video-watched]', fig);
     if (flag) flag.hidden = false;
   };
-  for (const fig of $$('[data-video-slug]')) {
-    const slug = /** @type {string} */ (fig.dataset.videoSlug);
-    const frame = /** @type {HTMLIFrameElement | null} */ ($('iframe', fig));
-    if (!frame) continue;
-    if (store.isVideoWatched(slug)) markWatched(fig);
+  if (store.isVideoWatched(slug)) markWatched();
 
-    window.addEventListener('message', (e) => {
-      let data = e.data;
-      if (typeof data === 'string') { try { data = JSON.parse(data); } catch { return; } }
-      if (!data || data.event !== 'yt-state') return;
-      if (e.origin !== 'https://www.youtube-nocookie.com' && e.origin !== 'https://www.youtube.com') return;
-      if (data.state !== 0) return; // 0 means the video ended
-      store.setVideoWatched(slug);
-      markWatched(fig);
+  const YT = await loadYouTubeApi();
+  if (!YT || !YT.Player) { bar?.remove(); return; }
+
+  let duration = Number(fig.dataset.videoSeconds) || 0;
+  let position = 0;
+  let muted = false;
+  let rateIndex = 0;
+  let scrubbing = false;
+
+  /** @type {any} */
+  let player;
+
+  const update = () => {
+    if (!scrubbing && player && typeof player.getCurrentTime === 'function') {
+      try { position = player.getCurrentTime(); } catch { /* not ready yet */ }
+    }
+    if (timeEl) timeEl.textContent = clock(position);
+    if (seek) seek.value = String(duration ? Math.round((position / duration) * 1000) : 0);
+    if (playIcon) {
+      const playing = player && player.getPlayerState && player.getPlayerState() === 1;
+      playIcon.innerHTML = playing ? PAUSE_ICON : PLAY_ICON;
+    }
+    if (playBtn) playBtn.setAttribute('aria-label', player && player.getPlayerState && player.getPlayerState() === 1 ? 'Pause the video' : 'Play the video');
+    if (muteIcon) muteIcon.innerHTML = muted ? SOUND_ICON : MUTE_ICON;
+    if (muteBtn) muteBtn.setAttribute('aria-label', muted ? 'Unmute the video' : 'Mute the video');
+  };
+
+  try {
+    player = new YT.Player(frame, {
+      events: {
+        onReady: () => {
+          bar?.querySelectorAll('button, input').forEach((el) => { el.disabled = false; });
+          const d = player.getDuration();
+          if (d) duration = d;
+          if (durEl) durEl.textContent = clock(duration);
+          update();
+        },
+        onStateChange: (/** @type {{ data: number }} */ e) => {
+          const state = e.data;
+          if (state === 0) { store.setVideoWatched(slug); markWatched(); }
+          if (state === 1) { position = player.getCurrentTime(); }
+          update();
+        },
+      },
     });
-
-    const listen = () => {
-      try {
-        frame.contentWindow?.postMessage(JSON.stringify({
-          event: 'command',
-          func: 'addEventListener',
-          args: ['onStateChange', 'function(event){window.parent.postMessage(JSON.stringify({event:"yt-state",state:event.data}),"*");}'],
-        }), '*');
-      } catch { /* the frame is not ready yet */ }
-    };
-    frame.addEventListener('load', listen);
-    listen();
-    // The player API can be a moment behind the frame load event.
-    setTimeout(listen, 800);
-    setTimeout(listen, 2500);
+  } catch {
+    bar?.remove();
+    return;
   }
+
+  playBtn?.addEventListener('click', () => {
+    if (!player) return;
+    if (player.getPlayerState() === 1) player.pauseVideo(); else player.playVideo();
+    setTimeout(update, 120);
+  });
+  muteBtn?.addEventListener('click', () => {
+    if (!player) return;
+    if (muted) { player.unMute(); muted = false; } else { player.mute(); muted = true; }
+    update();
+  });
+  rateBtn?.addEventListener('click', () => {
+    if (!player) return;
+    rateIndex = (rateIndex + 1) % RATES.length;
+    const rate = RATES[rateIndex];
+    player.setPlaybackRate(rate);
+    if (rateBtn) rateBtn.textContent = `${rate}×`;
+  });
+  fullBtn?.addEventListener('click', () => {
+    if (document.fullscreenElement) document.exitFullscreen();
+    else fig.requestFullscreen?.();
+  });
+  seek?.addEventListener('pointerdown', () => { scrubbing = true; });
+  seek?.addEventListener('input', () => {
+    scrubbing = true;
+    position = (Number(seek.value) / 1000) * duration;
+    if (timeEl) timeEl.textContent = clock(position);
+  });
+  seek?.addEventListener('change', () => {
+    if (player && duration) player.seekTo(position, true);
+    scrubbing = false;
+  });
+  seek?.addEventListener('pointerup', () => { scrubbing = false; });
+
+  // Keep the bar in step with the player while it runs.
+  setInterval(update, 250);
+  update();
+}
+
+function initVideos() {
+  const figures = $$('[data-video-slug]');
+  if (!figures.length) return;
+  for (const fig of figures) setupVideo(fig);
   store.subscribe(() => {
-    for (const fig of $$('[data-video-slug]')) {
-      if (store.isVideoWatched(/** @type {string} */ (fig.dataset.videoSlug))) markWatched(fig);
+    for (const fig of figures) {
+      if (store.isVideoWatched(/** @type {string} */ (fig.dataset.videoSlug))) {
+        const flag = $('[data-video-watched]', fig);
+        if (flag) flag.hidden = false;
+      }
     }
   });
 }
