@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  STORAGE_KEY, emptyState, migrate, createStore, probeBackend, courseProgress, projectProgress, scopeProgress,
+  STORAGE_KEY, SCHEMA_VERSION, emptyState, migrate, createStore, probeBackend, courseProgress, projectProgress, scopeProgress,
   stageStatus, nextLesson, findLesson, search, filterItems, hasActivity,
 } from '../../js/learn/store.mjs';
 
@@ -37,6 +37,7 @@ test('migrate keeps valid entries and drops invalid ones', () => {
     notes: { a: { text: 'hello' }, b: { text: '   ' } },
     quiz: { a: { 0: 1, 1: -1, 2: 'x' } },
     checks: { l: [2, 2, 0, -1, 'x'] },
+    videos: { a: '2026-02-02', b: 7 },
     last: { slug: 'a' }, extra: 'ignored',
   });
   assert.deepEqual(Object.keys(s.done).sort(), ['a', 'b']);
@@ -44,6 +45,7 @@ test('migrate keeps valid entries and drops invalid ones', () => {
   assert.deepEqual(Object.keys(s.notes), ['a'], 'blank notes are dropped');
   assert.deepEqual(s.quiz.a, { 0: 1 });
   assert.deepEqual(s.checks.l, [0, 2]);
+  assert.deepEqual(Object.keys(s.videos), ['a'], 'only string timestamps are kept');
   assert.equal(s.last.slug, 'a');
   assert.equal('extra' in s, false);
 });
@@ -58,7 +60,7 @@ test('store persists to the backend under a versioned key', () => {
   const store = createStore(b, fixedNow);
   store.setDone('a', true);
   const saved = JSON.parse(b.dump()[STORAGE_KEY]);
-  assert.equal(saved.v, 1);
+  assert.equal(saved.v, SCHEMA_VERSION);
   assert.equal(saved.done.a, fixedNow());
   const again = createStore(b, fixedNow);
   assert.equal(again.isDone('a'), true, 'a new store reads previous progress');
@@ -111,6 +113,26 @@ test('bookmarks, notes, quiz answers and checklists round-trip', () => {
   assert.deepEqual(store.getChecks('list'), [0]);
   store.setCheck('list', 0, false);
   assert.equal('list' in store.state.checks, false);
+});
+
+test('watched videos are recorded once and survive a reload', () => {
+  const b = memory();
+  const store = createStore(b, fixedNow);
+  assert.equal(store.isVideoWatched('a'), false);
+  store.setVideoWatched('a');
+  assert.equal(store.isVideoWatched('a'), true);
+  assert.equal(store.state.videos.a, '2026-10-20T10:00:00.000Z');
+  const reloaded = createStore(b, fixedNow);
+  assert.equal(reloaded.isVideoWatched('a'), true, 'the watched video is still known after a reload');
+});
+
+test('marking a video watched again does not change the timestamp', () => {
+  let now = '2026-10-20T10:00:00.000Z';
+  const store = createStore(memory(), () => now);
+  store.setVideoWatched('a');
+  now = '2026-10-21T10:00:00.000Z';
+  store.setVideoWatched('a');
+  assert.equal(store.state.videos.a, '2026-10-20T10:00:00.000Z');
 });
 
 test('subscribers are notified on every change', () => {

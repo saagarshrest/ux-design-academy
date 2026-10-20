@@ -4,7 +4,7 @@ import {
   esc, fmtMin, lessonUrl, courseUrl, extLink, Breadcrumbs, ProgressIndicator, CourseCard, courseStats, levelTag, coreTag,
   RoadmapOverview, LearningObjectives, LessonTableOfContents, KnowledgeCheck, Checklist, ExerciseCard, AssignmentBrief,
   AssessmentRubric, ResourceCard, BookmarkControl, PreviousNextLesson, SearchAndFilters, GlossarySearch, ProjectMilestoneList,
-  EmptyState, ulText, ul, ol,
+  EmptyState, ulText, ul, ol, VideoPlayer, ProgressRing, LessonRow, CourseCover, fmtDuration,
 } from './components.mjs';
 import { SITE } from './shell.mjs';
 
@@ -43,13 +43,22 @@ export function homePage(d) {
       <p class="la-eyebrow">Free and self-guided · no account needed</p>
       <h1 class="la-h1 la-h1--xl">UI/UX Design <em>Academy.</em></h1>
       <p class="la-tagline">Learn design by understanding, practising, and building.</p>
-      <p class="la-lead">A structured path from complete beginner to portfolio-ready junior designer. Every lesson explains why a decision works, shows a realistic example, and ends with practice you can check against a rubric. Written for students, career switchers, visual designers moving into UX, and developers who want to learn product design.</p>
+      <p class="la-lead">A structured path from complete beginner to portfolio-ready junior designer. Every lesson pairs a short video with a written explanation, a realistic example, a knowledge check and an exercise you can score against a rubric.</p>
       <div class="la-actions">
         <a class="la-btn la-btn--lg" href="${lessonUrl(d.first.slug)}" data-start-link>Start learning <span aria-hidden="true">→</span></a>
-        <a class="la-btn la-btn--ghost la-btn--lg" href="/learn/roadmap/">See the roadmap</a>
+        <a class="la-btn la-btn--ghost la-btn--lg" href="/learn/courses/">Browse courses</a>
       </div>
+      <ul class="la-facts la-facts--row">${facts.map(([n, l]) => `<li><b>${n}</b><span>${esc(l)}</span></li>`).join('')}</ul>
     </div>
-    <dl class="la-facts">${facts.map(([n, l]) => `<div><dt>${esc(l)}</dt><dd>${n}</dd></div>`).join('')}</dl>
+    <aside class="la-dash" aria-labelledby="dash-h">
+      <div class="la-dash__card">
+        <p class="la-side-card__h" id="dash-h">Your learning</p>
+        <div class="la-dash__ring">${ProgressRing('core', 'core done', 'lg')}</div>
+        <p class="la-dash__note">Progress is saved in this browser only. It does not sync between devices.</p>
+        <div data-next-slot></div>
+        <a class="la-btn la-btn--ghost la-btn--block" href="/learn/saved/">Open My learning</a>
+      </div>
+    </aside>
   </div>
 </header>
 
@@ -127,7 +136,7 @@ export function homePage(d) {
   return {
     path: '/learn/', active: 'overview',
     title: 'Learn UI/UX design from scratch',
-    description: 'A free, self-guided UI/UX design academy: a structured roadmap, written lessons with examples, exercises, portfolio projects, templates and a glossary. Progress is saved in your browser.',
+    description: 'A free, self-guided UI/UX design academy: a structured roadmap, video and written lessons with examples, exercises, portfolio projects, templates and a glossary. Progress is saved in your browser.',
     body,
     jsonld: { '@context': 'https://schema.org', '@type': 'WebSite', name: 'UI/UX Design Academy', url: SITE + '/learn/', publisher: AUTHOR, potentialAction: { '@type': 'SearchAction', target: SITE + '/learn/search/?q={q}', 'query-input': 'required name=q' } },
   };
@@ -187,42 +196,41 @@ ${hero('Curriculum', 'Courses and <em>modules.</em>', 'Thirteen stages, each a c
 }
 
 /** @param {Course} c @param {Course[]} all @param {import('./types').Project[]} projects */
-export function coursePage(c, all, projects) {
+export function coursePage(c, all, projects, videos = {}) {
   const s = courseStats(c);
   const bySlug = Object.fromEntries(all.map((x) => [x.slug, x]));
   const pre = c.prerequisites.length
     ? `<p class="la-pre"><span>Before this stage</span> ${c.prerequisites.map((p) => `<a href="${courseUrl(p)}">Stage ${bySlug[p].stage}: ${esc(bySlug[p].title)}</a>`).join(', ')}</p>`
     : '<p class="la-pre"><span>Before this stage</span> Nothing. Start here.</p>';
-  const rows = c.lessons.map((l, i) => {
-    const req = l.requiresCourses?.length ? `<p class="la-lrow__req">Builds on ${l.requiresCourses.map((r) => `Stage ${bySlug[r].stage}`).join(', ')}</p>` : '';
-    if (l.status === 'published') return `<li class="la-lrow" id="lesson-${l.slug}" data-lesson-row="${l.slug}">
-      <span class="la-lrow__n" aria-hidden="true">${i + 1}</span>
-      <div class="la-lrow__main"><h3 class="la-lrow__t"><a href="${lessonUrl(l.slug)}">${esc(l.title)}</a></h3><p>${esc(l.summary)}</p>${req}</div>
-      <span class="la-lrow__meta">${fmtMin(l.minutes)}<span class="la-lrow__state" data-lesson-state></span></span>
-    </li>`;
-    return `<li class="la-lrow is-planned" id="lesson-${l.slug}">
-      <span class="la-lrow__n" aria-hidden="true">${i + 1}</span>
-      <div class="la-lrow__main"><h3 class="la-lrow__t">${esc(l.title)}</h3><p>${esc(l.summary)}</p>${req}</div>
-      <span class="la-lrow__meta">${fmtMin(l.minutes)}<span class="la-status la-status--planned">In writing</span></span>
-    </li>`;
-  }).join('');
+  const rows = c.lessons.map((l, i) => LessonRow(l, { index: i, video: videos[l.slug] || null, total: c.lessons.length })).join('');
   const linked = projects.filter((p) => c.projects?.includes(p.slug));
   const firstPub = c.lessons.find((l) => l.status === 'published');
   const idx = all.indexOf(c);
+  const videoCount = c.lessons.filter((l) => l.status === 'published' && videos[l.slug]).length;
   const body = `
-<header class="la-hero"><div class="la-wrap">
-  ${Breadcrumbs([{ label: 'Learn', href: '/learn/' }, { label: 'Courses', href: '/learn/courses/' }, { label: `Stage ${c.stage}` }])}
-  <p class="la-eyebrow">Stage ${c.stage} · ${c.optional ? 'Optional' : 'Core'} · ${c.level}</p>
-  <h1 class="la-h1">${esc(c.title)}</h1>
-  <p class="la-lead">${esc(c.short)}</p>
-  <ul class="la-meta la-meta--lg"><li>${s.total} lessons</li><li>about ${fmtMin(s.minutes)} of reading and practice</li><li>${s.written}</li></ul>
-  <div class="la-actions">${firstPub ? `<a class="la-btn" href="${lessonUrl(firstPub.slug)}" data-course-start="${c.slug}">Start this course <span aria-hidden="true">→</span></a>` : ''}${BookmarkControl('course', c.slug, c.title, courseUrl(c.slug))}</div>
-</div></header>
+<div class="la-coursehead la-cover--stage-${c.stage % 6}">
+  <div class="la-wrap">
+    ${Breadcrumbs([{ label: 'Learn', href: '/learn/' }, { label: 'Courses', href: '/learn/courses/' }, { label: `Stage ${c.stage}` }])}
+    <div class="la-coursehead__grid">
+      <div>
+        <p class="la-eyebrow">Stage ${c.stage} · ${c.optional ? 'Optional' : 'Core'} · ${c.level}</p>
+        <h1 class="la-h1">${esc(c.title)}</h1>
+        <p class="la-lead">${esc(c.short)}</p>
+        <ul class="la-meta la-meta--lg"><li>${s.total} lessons</li><li>about ${fmtMin(s.minutes)} of reading and practice</li><li>${s.written}</li>${videoCount ? `<li>${videoCount} videos</li>` : ''}</ul>
+        <div class="la-actions">${firstPub ? `<a class="la-btn" href="${lessonUrl(firstPub.slug)}" data-course-start="${c.slug}">Start this course <span aria-hidden="true">→</span></a>` : ''}${BookmarkControl('course', c.slug, c.title, courseUrl(c.slug))}</div>
+      </div>
+      <div class="la-coursehead__side">
+        ${ProgressRing(`course:${c.slug}`, 'of this course', 'lg')}
+        ${s.pub ? ProgressIndicator(`course:${c.slug}`, `${c.title} progress`) : '<p class="la-muted">Nothing to track yet. Lessons appear here as they are written.</p>'}
+      </div>
+    </div>
+  </div>
+</div>
 <div class="la-wrap la-page la-course-page">
   <div class="la-course-page__main">
     ${sec('about', 'About this stage', `<div class="la-prose">${c.overview}</div>${pre}`)}
     ${sec('outcomes', 'Learning outcomes', ulText(c.outcomes, 'la-outcomes la-outcomes--lg'))}
-    ${sec('lessons', 'Lessons', `${s.pub < s.total ? `<p class="la-note">${s.pub ? `${s.pub} of ${s.total} lessons are written.` : 'The lessons in this stage are being written.'} Lessons marked “In writing” are listed so you can see the full scope; they are never counted towards your progress. The <a href="/learn/resources/">resource library</a> and <a href="/learn/glossary/">glossary</a> cover these topics in the meantime.</p>` : ''}<ol class="la-lrows">${rows}</ol>`)}
+    ${sec('lessons', 'Lessons', `${s.pub < s.total ? `<p class="la-note">${s.pub ? `${s.pub} of ${s.total} lessons are written.` : 'The lessons in this stage are being written.'} Lessons marked “In writing” are listed so you can see the full scope; they are never counted towards your progress. The <a href="/learn/resources/">resource library</a> and <a href="/learn/glossary/">glossary</a> cover these topics in the meantime.</p>` : ''}<ol class="la-srows">${rows}</ol>`)}
     ${linked.length ? sec('projects', 'Practise with a project', `<div class="la-grid la-grid--2">${linked.map(projectCard).join('')}</div>`) : ''}
   </div>
   <aside class="la-course-page__side" aria-label="Course progress">
@@ -243,7 +251,7 @@ export function coursePage(c, all, projects) {
 
 /* ================================================================= LESSON */
 
-/** @param {{ lesson: Lesson, course: Course, prev: Lesson | null, next: Lesson | null, index: number, lessonsBySlug: Record<string, { lesson: Lesson, course: Course }> }} d */
+/** @param {{ lesson: Lesson, course: Course, prev: Lesson | null, next: Lesson | null, index: number, lessonsBySlug: Record<string, { lesson: Lesson, course: Course }>, video?: import('./types').Video }} d */
 export function lessonPage(d) {
   const { lesson: l, course: c } = d;
   const b = /** @type {import('./types').LessonBody} */ (l.body);
@@ -259,13 +267,14 @@ export function lessonPage(d) {
   const figure = b.figure ? `<figure class="la-fig">${b.figure.html}<figcaption>${esc(b.figure.caption)}</figcaption></figure>` : '';
   const ex = b.exercise;
   const completeBtn = (/** @type {string} */ where) => `<button type="button" class="la-btn${where === 'top' ? ' la-btn--ghost' : ''}" data-complete="${l.slug}" aria-pressed="false"><span data-complete-label>Mark lesson complete</span></button>`;
+  const video = d.video ? VideoPlayer(d.video, l.slug) : '';
   const body = `
 <header class="la-hero la-hero--lesson"><div class="la-wrap">
   ${Breadcrumbs([{ label: 'Learn', href: '/learn/' }, { label: `Stage ${c.stage}: ${c.title}`, href: courseUrl(c.slug) }, { label: l.title }])}
   <p class="la-eyebrow">Stage ${c.stage} · Lesson ${d.index + 1} of ${c.lessons.length}</p>
   <h1 class="la-h1">${esc(l.title)}</h1>
   <p class="la-lead">${esc(l.summary)}</p>
-  <ul class="la-meta la-meta--lg"><li>${esc(l.level || c.level)}</li><li>${fmtMin(l.minutes)}</li><li>${b.quiz.length} check questions</li><li>Exercise: ${fmtMin(ex.minutes)}</li></ul>
+  <ul class="la-meta la-meta--lg"><li>${esc(l.level || c.level)}</li><li>${fmtMin(l.minutes)}</li>${d.video ? `<li>${fmtDuration(d.video.seconds)} video</li>` : ''}<li>${b.quiz.length} check questions</li><li>Exercise: ${fmtMin(ex.minutes)}</li></ul>
   ${preHtml}
   <div class="la-actions la-no-print">${completeBtn('top')}${BookmarkControl('lesson', l.slug, l.title, lessonUrl(l.slug))}<button type="button" class="la-btn la-btn--ghost" data-print>Print lesson</button></div>
 </div></header>
@@ -284,6 +293,7 @@ export function lessonPage(d) {
   </aside>
 
   <article class="la-lesson__main">
+    ${video}
     ${LearningObjectives(b.objectives)}
     ${sec('explanation', 'The idea', `<div class="la-prose">${b.explanation}</div>`)}
     ${sec('why', 'Why it matters in real projects', `<div class="la-prose">${b.why}</div>`)}
@@ -306,10 +316,17 @@ export function lessonPage(d) {
     <div class="la-finish la-no-print">${completeBtn('bottom')}<p class="la-muted">Marking complete updates your course and roadmap progress.</p></div>
     ${PreviousNextLesson(d.prev, d.next, c)}
   </article>
+</div>
+<div class="la-actionbar la-no-print" data-actionbar>
+  <div class="la-actionbar__in">
+    <a class="la-actionbar__prev" href="${d.prev ? lessonUrl(d.prev.slug) : courseUrl(c.slug)}"><span>${d.prev ? 'Previous' : 'Back to course'}</span><b>${esc(d.prev ? d.prev.title : c.title)}</b></a>
+    <button type="button" class="la-btn" data-complete="${l.slug}" aria-pressed="false"><span data-complete-label>Mark complete</span></button>
+    <a class="la-actionbar__next" href="${d.next ? lessonUrl(d.next.slug) : '/learn/roadmap/'}"><span>${d.next ? 'Next lesson' : 'Roadmap'}</span><b>${esc(d.next ? d.next.title : 'See the full path')}</b></a>
+  </div>
 </div>`;
   return {
     path: lessonUrl(l.slug), active: 'courses', title: l.title,
-    description: `${l.summary} A free lesson with examples, a knowledge check and an exercise, from Stage ${c.stage} of the UI/UX Design Academy.`,
+    description: `${l.summary} A free lesson with a video, examples, a knowledge check and an exercise, from Stage ${c.stage} of the UI/UX Design Academy.`,
     body,
     jsonld: { '@context': 'https://schema.org', '@type': 'LearningResource', name: l.title, description: l.summary, learningResourceType: 'Lesson', educationalLevel: l.level || c.level, timeRequired: `PT${l.minutes}M`, isAccessibleForFree: true, author: AUTHOR, isPartOf: { '@type': 'Course', name: c.title, url: SITE + courseUrl(c.slug) }, teaches: b.objectives, url: SITE + lessonUrl(l.slug), inLanguage: 'en' },
   };
@@ -431,13 +448,26 @@ export function projectPage(p, courses) {
 
 /* ============================================================== RESOURCES */
 
-/** @param {{ resources: import('./types').Resource[], templates: import('./types').Template[] }} d */
+/** @param {{ resources: import('./types').Resource[], templates: import('./types').Template[], videos?: Record<string, import('./types').Video>, lessonTitle?: (slug: string) => string }} d */
 export function resourcesPage(d) {
   const cats = [...new Set(d.resources.map((r) => r.category))];
+  const videoList = Object.entries(d.videos || {});
+  const videoSection = videoList.length ? sec('videos', 'Video library', `
+    <p class="la-muted la-maxw">One companion video per written lesson, chosen from established design channels. Each one opens on the lesson it belongs to, so the video and the written work sit together.</p>
+    <ul class="la-vlib">${videoList.map(([slug, v]) => `<li class="la-vlib__row">
+      <a class="la-vlib__link" href="${lessonUrl(slug)}">
+        <span class="la-vlib__play" aria-hidden="true"><svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true"><path d="M8 5.5v13l11-6.5z"/></svg></span>
+        <span class="la-vlib__body">
+          <b>${esc(d.lessonTitle ? d.lessonTitle(slug) : v.title)}</b>
+          <span class="la-vlib__meta">${esc(v.channel)} · ${fmtDuration(v.seconds)} · ${esc(v.title)}</span>
+        </span>
+      </a>
+    </li>`).join('')}</ul>`) : '';
   const body = `
-${hero('Resources', 'Templates, references and <em>tools.</em>', 'Copyable templates for every stage of a project, plus a curated list of trustworthy external sources. External links are third-party content; costs are shown only where they were checked.')}
+${hero('Resources', 'Templates, references and <em>tools.</em>', 'Copyable templates for every stage of a project, videos that accompany the lessons, plus a curated list of trustworthy external sources. External links are third-party content; costs are shown only where they were checked.')}
 <div class="la-wrap la-page">
   ${Breadcrumbs([{ label: 'Learn', href: '/learn/' }, { label: 'Resources' }])}
+  ${videoSection}
   ${sec('templates', 'Templates', `<p class="la-muted la-maxw">Each template opens as a print-friendly page. Copy it as Markdown, download a .md file, or print it.</p>
     <div class="la-grid la-grid--3">${d.templates.map((t) => `<article class="la-card"><div class="la-course__top"><span class="la-stage">Template</span></div><h3 class="la-card__title"><a class="la-stretch" href="/learn/resources/templates/${t.slug}/">${esc(t.title)}</a></h3><p class="la-card__text">${esc(t.summary)}</p><ul class="la-meta"><li>Used in: ${esc(t.usedIn.join(', '))}</li></ul></article>`).join('')}</div>`)}
   ${sec('library', 'External resources', `${SearchAndFilters('resources', [{ key: 'category', label: 'Category', options: cats.map((c) => [c, c]) }], 'Search resources')}
@@ -445,7 +475,7 @@ ${hero('Resources', 'Templates, references and <em>tools.</em>', 'Copyable templ
     ${EmptyState('No resources match', 'Try a different word or set Category back to All.', '', ' data-filter-empty hidden')}`)}
   <p class="la-muted">Looking for a definition? Try the <a href="/learn/glossary/">glossary</a>.</p>
 </div>`;
-  return { path: '/learn/resources/', active: 'resources', title: 'Resources and templates', description: 'Free UX templates (research plan, interview guide, personas, journey maps, usability test plan, accessibility audit, case study outline) and a curated library of trusted design resources.', body };
+  return { path: '/learn/resources/', active: 'resources', title: 'Resources and templates', description: 'Free UX templates (research plan, interview guide, personas, journey maps, usability test plan, accessibility audit, case study outline), a library of companion videos, and a curated list of trusted design resources.', body };
 }
 
 /** @param {import('./types').Template} t @param {(md: string) => string} renderMd */

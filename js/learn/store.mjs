@@ -12,15 +12,16 @@
    ===================================================================== */
 
 export const STORAGE_KEY = 'uxacademy';
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
 const NOTE_MAX = 20000;
 
 /**
  * @typedef {{ v: number, done: Record<string, string>, bookmarks: Record<string, { title: string, href: string, at: string }>,
  *   notes: Record<string, { text: string, at: string }>, quiz: Record<string, Record<string, number>>,
- *   checks: Record<string, number[]>, last: { slug: string, at: string } | null, updatedAt: string | null }} LearnState
+ *   checks: Record<string, number[]>, videos: Record<string, string>,
+ *   last: { slug: string, at: string } | null, updatedAt: string | null }} LearnState
  * @typedef {{ getItem(k: string): string | null, setItem(k: string, v: string): void, removeItem(k: string): void }} Backend
- * @typedef {{ slug: string, title: string, minutes?: number, published: boolean, url: string }} CatLesson
+ * @typedef {{ slug: string, title: string, minutes?: number, published: boolean, video?: boolean, url: string }} CatLesson
  * @typedef {{ slug: string, stage: number, title: string, optional: boolean, url: string, lessons: CatLesson[] }} CatCourse
  * @typedef {{ slug: string, title: string, url: string, milestones: { id: string, title: string, tasks: number }[] }} CatProject
  * @typedef {{ version: number, first: string, courses: CatCourse[], projects: CatProject[] }} Catalog
@@ -28,7 +29,7 @@ const NOTE_MAX = 20000;
 
 /** @returns {LearnState} */
 export function emptyState() {
-  return { v: SCHEMA_VERSION, done: {}, bookmarks: {}, notes: {}, quiz: {}, checks: {}, last: null, updatedAt: null };
+  return { v: SCHEMA_VERSION, done: {}, bookmarks: {}, notes: {}, quiz: {}, checks: {}, videos: {}, last: null, updatedAt: null };
 }
 
 const isObj = (/** @type {unknown} */ x) => !!x && typeof x === 'object' && !Array.isArray(x);
@@ -54,6 +55,7 @@ export function migrate(raw) {
     s.quiz[k] = q;
   }
   if (isObj(r.checks)) for (const [k, v] of Object.entries(r.checks)) if (Array.isArray(v)) s.checks[k] = [...new Set(v.filter((n) => Number.isInteger(n) && n >= 0))].sort((a, b) => a - b);
+  if (isObj(r.videos)) for (const [k, v] of Object.entries(r.videos)) if (isStr(v)) s.videos[k] = v;
   if (isObj(r.last) && isStr(r.last.slug)) s.last = { slug: r.last.slug, at: isStr(r.last.at) ? r.last.at : '' };
   if (isStr(r.updatedAt)) s.updatedAt = r.updatedAt;
   return s;
@@ -146,6 +148,15 @@ export function createStore(backend, now = () => new Date().toISOString()) {
       const set = new Set(state.checks[id] || []);
       if (on) set.add(idx); else set.delete(idx);
       if (set.size) state.checks[id] = [...set].sort((a, b) => a - b); else delete state.checks[id];
+      commit();
+    },
+
+    /** Whether the lesson's video has been watched to the end. */
+    isVideoWatched: (/** @type {string} */ slug) => !!state.videos[slug],
+    /** @param {string} slug */
+    setVideoWatched(slug) {
+      if (state.videos[slug]) return;
+      state.videos[slug] = now();
       commit();
     },
 

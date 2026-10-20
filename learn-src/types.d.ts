@@ -19,6 +19,19 @@ export interface Reading {
   note?: string;
 }
 
+/** A third-party video shown at the top of a lesson. */
+export interface Video {
+  /** YouTube video id. */
+  id: string;
+  title: string;
+  /** Channel that published the video. */
+  channel: string;
+  /** Real runtime in seconds. */
+  seconds: number;
+  /** What the learner gets from it and how it fits the lesson. */
+  note: string;
+}
+
 export interface QuizQuestion {
   q: string;
   options: string[];
@@ -83,6 +96,8 @@ export interface LessonMeta {
   prerequisites?: string[];
   /** Course slugs to finish first (used by the optional advanced paths). */
   requiresCourses?: string[];
+  /** A third-party video paired with the lesson, from the video library. */
+  video?: Video;
 }
 
 export interface Lesson extends LessonMeta {

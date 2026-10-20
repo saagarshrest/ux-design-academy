@@ -48,6 +48,27 @@ function renderProgress() {
     }
     el.classList.toggle('is-done', p.available > 0 && p.done === p.available);
   }
+  // Circular progress rings on the dashboard and course pages
+  for (const el of $$('[data-ring-scope]')) {
+    if (!catalog) continue;
+    const p = scopeProgress(catalog, store.state, /** @type {string} */ (el.dataset.ringScope));
+    if (!p) { el.hidden = true; continue; }
+    const pct = p.available ? Math.round((p.done / p.available) * 100) : 0;
+    el.style.setProperty('--la-pct', String(pct));
+    el.dataset.done = p.available > 0 && p.done === p.available ? '1' : '0';
+    const label = ($('.la-ring__in span', el) || {}).textContent || 'complete';
+    el.setAttribute('aria-label', `${label}: ${pct} percent complete`);
+    const value = $('[data-ring-value]', el);
+    if (value) value.innerHTML = `${pct}<i>%</i>`;
+  }
+  // The app bar pill
+  const pill = $('[data-app-progress]');
+  if (pill && catalog) {
+    const p = scopeProgress(catalog, store.state, 'core');
+    const txt = $('[data-app-progress-text]', pill);
+    if (txt) txt.textContent = p && p.available ? `${p.done}/${p.available} lessons` : 'Start learning';
+    pill.dataset.state = p && p.available && p.done === p.available ? 'done' : (p && p.done ? 'active' : 'empty');
+  }
   // Roadmap stage statuses
   for (const node of $$('[data-stage]')) {
     const c = catalog?.courses.find((x) => x.slug === node.dataset.stage);
@@ -61,10 +82,11 @@ function renderProgress() {
   }
   // Lesson rows on course pages
   for (const row of $$('[data-lesson-row]')) {
-    const done = store.isDone(/** @type {string} */ (row.dataset.lessonRow));
+    const slug = /** @type {string} */ (row.dataset.lessonRow);
+    const done = store.isDone(slug);
     row.classList.toggle('is-done', done);
     const s = $('[data-lesson-state]', row);
-    if (s) s.textContent = done ? 'Completed' : '';
+    if (s) s.textContent = done ? 'Completed' : (store.isVideoWatched(slug) ? 'Video watched' : '');
   }
 }
 
@@ -77,7 +99,9 @@ function initLesson() {
       const done = store.isDone(/** @type {string} */ (btn.dataset.complete));
       btn.setAttribute('aria-pressed', String(done));
       const label = $('[data-complete-label]', btn);
-      if (label) label.textContent = done ? 'Completed. Mark as not done' : 'Mark lesson complete';
+      // The sticky mobile bar has less room, so it uses shorter wording.
+      const short = !!btn.closest('[data-actionbar]');
+      if (label) label.textContent = done ? (short ? 'Completed' : 'Completed. Mark as not done') : (short ? 'Mark complete' : 'Mark lesson complete');
       btn.classList.toggle('is-on', done);
     }
   };
@@ -87,6 +111,55 @@ function initLesson() {
   });
   store.subscribe(sync);
   sync();
+}
+
+/* ---------------------------------------------------------- video player */
+/**
+ * Mark a lesson's video as watched once it has played to the end. The
+ * player is asked to report its state through postMessage, so no extra
+ * script is loaded from YouTube beyond the embed itself.
+ */
+function initVideos() {
+  const markWatched = (fig) => {
+    const flag = $('[data-video-watched]', fig);
+    if (flag) flag.hidden = false;
+  };
+  for (const fig of $$('[data-video-slug]')) {
+    const slug = /** @type {string} */ (fig.dataset.videoSlug);
+    const frame = /** @type {HTMLIFrameElement | null} */ ($('iframe', fig));
+    if (!frame) continue;
+    if (store.isVideoWatched(slug)) markWatched(fig);
+
+    window.addEventListener('message', (e) => {
+      let data = e.data;
+      if (typeof data === 'string') { try { data = JSON.parse(data); } catch { return; } }
+      if (!data || data.event !== 'yt-state') return;
+      if (e.origin !== 'https://www.youtube-nocookie.com' && e.origin !== 'https://www.youtube.com') return;
+      if (data.state !== 0) return; // 0 means the video ended
+      store.setVideoWatched(slug);
+      markWatched(fig);
+    });
+
+    const listen = () => {
+      try {
+        frame.contentWindow?.postMessage(JSON.stringify({
+          event: 'command',
+          func: 'addEventListener',
+          args: ['onStateChange', 'function(event){window.parent.postMessage(JSON.stringify({event:"yt-state",state:event.data}),"*");}'],
+        }), '*');
+      } catch { /* the frame is not ready yet */ }
+    };
+    frame.addEventListener('load', listen);
+    listen();
+    // The player API can be a moment behind the frame load event.
+    setTimeout(listen, 800);
+    setTimeout(listen, 2500);
+  }
+  store.subscribe(() => {
+    for (const fig of $$('[data-video-slug]')) {
+      if (store.isVideoWatched(/** @type {string} */ (fig.dataset.videoSlug))) markWatched(fig);
+    }
+  });
 }
 
 /* ------------------------------------------------------------- bookmarks */
@@ -310,8 +383,9 @@ function renderContinue() {
   const last = store.state.last ? findLesson(catalog, store.state.last.slug) : null;
   const next = nextLesson(catalog, store.state);
   const cards = [];
-  if (last && last.lesson.published) cards.push(`<a class="la-card la-cont" href="${last.lesson.url}"><span class="la-stage">Last opened · Stage ${last.course.stage}</span><b>${esc(last.lesson.title)}</b><span class="la-cont__meta">${store.isDone(last.lesson.slug) ? 'Completed' : 'Not marked complete yet'}</span></a>`);
-  if (next && (!last || next.lesson.slug !== last.lesson.slug)) cards.push(`<a class="la-card la-cont" href="${next.lesson.url}"><span class="la-stage">Up next · Stage ${next.course.stage}</span><b>${esc(next.lesson.title)}</b><span class="la-cont__meta">The next lesson you have not completed</span></a>`);
+  const badge = (l) => (l.video ? '<span class="la-tag la-tag--video">Video</span>' : '');
+  if (last && last.lesson.published) cards.push(`<a class="la-card la-cont" href="${last.lesson.url}"><span class="la-stage">Last opened · Stage ${last.course.stage}</span><b>${esc(last.lesson.title)}</b>${badge(last.lesson)}<span class="la-cont__meta">${store.isDone(last.lesson.slug) ? 'Completed' : 'Not marked complete yet'}</span></a>`);
+  if (next && (!last || next.lesson.slug !== last.lesson.slug)) cards.push(`<a class="la-card la-cont" href="${next.lesson.url}"><span class="la-stage">Up next · Stage ${next.course.stage}</span><b>${esc(next.lesson.title)}</b>${badge(next.lesson)}<span class="la-cont__meta">The next lesson you have not completed</span></a>`);
   if (!next) cards.push('<div class="la-card la-cont"><span class="la-stage">All caught up</span><b>You have completed every written lesson.</b><span class="la-cont__meta">Try a <a href="/learn/projects/">portfolio project</a> while new lessons are written.</span></div>');
   slot.innerHTML = cards.join('');
   section.hidden = false;
@@ -432,6 +506,7 @@ function initToc() {
 async function boot() {
   storageNotice();
   initLesson();
+  initVideos();
   initBookmarks();
   initNotes();
   initKnowledgeChecks();

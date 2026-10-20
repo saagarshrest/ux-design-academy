@@ -4,6 +4,7 @@
    the rest of the site. If those markers change, the build fails loudly. */
 import { readFileSync, existsSync } from 'node:fs';
 import { esc } from './components.mjs';
+import { AppDock } from './components.mjs';
 
 /* The public origin of the site. Set SITE_URL when building for a different
    host (for example a Vercel production domain); the default matches the
@@ -37,10 +38,12 @@ function balanced(/** @type {string} */ src, /** @type {number} */ start, /** @t
   throw new Error(`Unbalanced <${tag}> starting at ${start}`);
 }
 
-/** Minimal chrome used when the academy is built on its own, outside the portfolio site. */
+/** Minimal chrome used when the academy is built on its own, outside the portfolio site.
+    The academy bar (AcademyHeader) acts as the app header, so no separate
+    site navigation is rendered here. */
 const STANDALONE = {
   standalone: true,
-  nav: `<header class="la-solo"><div class="la-solo__in"><a href="/learn/" class="la-solo__brand">UI/UX Design Academy</a><span class="la-solo__by">by <a href="https://saagarshrest.com.np/">Saagar Shrestha</a></span></div></header>`,
+  nav: '',
   menu: '',
   footer: `<footer class="la-solo-foot"><div class="la-solo__in"><p>UI/UX Design Academy by <a href="https://saagarshrest.com.np/">Saagar Shrestha</a>. Free to learn from.</p></div></footer>`,
   icons: [
@@ -105,7 +108,7 @@ const FOOTER_SCRIPT = `<script>
 
 /**
  * @param {{ standalone: boolean, nav: string, menu: string, footer: string, icons: string[] }} chrome
- * @param {{ title: string, description: string, path: string, body: string, header: string, jsonld?: object, noindex?: boolean, version: string }} p
+ * @param {{ title: string, description: string, path: string, body: string, header: string, active?: string, jsonld?: object, noindex?: boolean, version: string }} p
  */
 export function page(chrome, p) {
   const url = SITE + p.path;
@@ -174,6 +177,7 @@ ${p.body}
 <!-- Footer -->
 ${chrome.footer}
 
+${AppDock(p.active)}
 ${chrome.standalone ? '' : FOOTER_SCRIPT}
 <script type="module" src="/js/learn/app.js?v=${p.version}"></script>
 ${chrome.standalone ? '' : `<script src="/js/pager.js"></script>

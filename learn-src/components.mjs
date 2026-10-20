@@ -57,6 +57,7 @@ export function AcademyHeader(/** @type {string} */ active, query = '') {
       <input id="la-bar-q" name="q" type="search" value="${esc(query)}" placeholder="Search lessons, terms, resources" autocomplete="off">
       <button type="submit" class="la-bar__go"><span class="la-sr">Search</span><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></button>
     </form>
+    <a class="la-bar__pill" href="/learn/saved/" data-app-progress><span class="la-bar__pill-dot" aria-hidden="true"></span><span data-app-progress-text>My progress</span></a>
   </div>
 </div>`;
 }
@@ -100,10 +101,11 @@ export function courseStats(/** @type {Course} */ c) {
 }
 
 /** CourseCard. */
-export function CourseCard(/** @type {Course} */ c, { outcomes = 3, headingLevel = 3 } = {}) {
+export function CourseCard(/** @type {Course} */ c, { outcomes = 3, headingLevel = 3, cover = true } = {}) {
   const s = courseStats(c);
   const h = `h${headingLevel}`;
   return `<article class="la-card la-course${c.optional ? ' is-optional' : ''}" data-item data-filter-level="${c.level}" data-filter-kind="${c.optional ? 'optional' : 'core'}" data-search="${esc(`${c.title} ${c.short} ${c.lessons.map((l) => l.title).join(' ')}`.toLowerCase())}">
+  ${cover ? CourseCover(c, { compact: true }) : ''}
   <div class="la-course__top"><span class="la-stage">Stage ${c.stage}</span>${coreTag(c.optional)}${levelTag(c.level)}</div>
   <${h} class="la-card__title"><a href="${courseUrl(c.slug)}" class="la-stretch">${esc(c.title)}</a></${h}>
   <p class="la-card__text">${esc(c.short)}</p>
@@ -290,3 +292,107 @@ export function ProjectMilestoneList(/** @type {import('./types').Project} */ p)
 export const ul = (/** @type {string[]} */ items, cls = '') => `<ul${cls ? ` class="${cls}"` : ''}>${items.map((i) => `<li>${i}</li>`).join('')}</ul>`;
 export const ulText = (/** @type {string[]} */ items, cls = '') => ul(items.map(esc), cls);
 export const ol = (/** @type {string[]} */ items, cls = '') => `<ol${cls ? ` class="${cls}"` : ''}>${items.map((i) => `<li>${i}</li>`).join('')}</ol>`;
+
+/* ------------------------------------------------------------- e-learning */
+
+/** Video runtime: "5:45" under an hour, "1 h 14 min" above it. */
+export const fmtDuration = (/** @type {number} */ seconds) => {
+  const total = Math.max(0, Math.round(seconds));
+  if (total < 3600) return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}`;
+  const m = Math.round(total / 60);
+  const h = Math.floor(m / 60), r = m % 60;
+  return r ? `${h} h ${r} min` : `${h} h`;
+};
+
+/**
+ * VideoPlayer: a third-party video at the top of a lesson. The embed is
+ * lazy, uses the privacy-friendly nocookie domain and never autoplays.
+ * app.js listens for the end of the video and records it as watched.
+ */
+export function VideoPlayer(/** @type {import('./types').Video} */ v, slug = '') {
+  return `<figure class="la-player" data-video-slug="${esc(slug)}" data-video-id="${esc(v.id)}">
+  <div class="la-player__frame">
+    <iframe src="https://www.youtube-nocookie.com/embed/${esc(v.id)}?rel=0&amp;modestbranding=1&amp;playsinline=1&amp;enablejsapi=1"
+      title="${esc(v.title)}" loading="lazy" referrerpolicy="strict-origin-when-cross-origin"
+      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+  </div>
+  <figcaption class="la-player__cap">
+    <p class="la-player__meta"><span class="la-tag la-tag--video">Watch</span><span class="la-player__chan">${esc(v.channel)}</span><span class="la-player__len">${fmtDuration(v.seconds)}</span><span class="la-player__watched" data-video-watched hidden>Watched</span></p>
+    <p class="la-player__title">${esc(v.title)}</p>
+    <p class="la-player__note">${esc(v.note)}</p>
+    <p class="la-player__links"><a href="https://www.youtube.com/watch?v=${esc(v.id)}" target="_blank" rel="noopener noreferrer">Watch on YouTube<span class="la-sr"> (opens in a new tab)</span></a><span class="la-player__legal">Third-party video. It is loaded from YouTube and is not hosted by the academy.</span></p>
+  </figcaption>
+</figure>`;
+}
+
+/** ProgressRing: a circular progress indicator for the dashboard. The
+    percentage is filled in by app.js from the learner's own progress. */
+export function ProgressRing(/** @type {string} */ scope, label = 'complete', size = 'md') {
+  return `<div class="la-ring la-ring--${size}" data-ring-scope="${esc(scope)}" style="--la-pct:0" role="img" aria-label="${esc(label)}: 0 percent complete">
+  <div class="la-ring__in"><b data-ring-value>0<i>%</i></b><span>${esc(label)}</span></div>
+</div>`;
+}
+
+/** The kind of work a lesson asks for, shown as a small badge. */
+const LESSON_KIND = (/** @type {Lesson} */ l, hasVideo) => {
+  if (l.status !== 'published') return { key: 'planned', label: 'In writing' };
+  if (hasVideo) return { key: 'video', label: 'Video' };
+  return { key: 'reading', label: 'Reading' };
+};
+
+/**
+ * LessonRow: one lesson in a course syllabus. Shows the kind of work,
+ * how long it takes and, once started, whether it is finished.
+ */
+export function LessonRow(/** @type {Lesson} */ l, { index = 0, video = null, total = 0 } = {}) {
+  const kind = LESSON_KIND(l, !!video);
+  const published = l.status === 'published';
+  const title = published
+    ? `<a href="${lessonUrl(l.slug)}">${esc(l.title)}</a>`
+    : `${esc(l.title)} <span class="la-status la-status--planned">In writing</span>`;
+  return `<li class="la-srow${published ? '' : ' is-planned'}" ${published ? `data-lesson-row="${esc(l.slug)}"` : `id="lesson-${esc(l.slug)}"`}>
+  <span class="la-srow__n" aria-hidden="true">${index + 1}</span>
+  <div class="la-srow__main">
+    <h3 class="la-srow__t">${title}</h3>
+    <p class="la-srow__sum">${esc(l.summary)}</p>
+  </div>
+  <span class="la-srow__meta">
+    <span class="la-kind la-kind--${kind.key}">${kind.label}</span>
+    <span class="la-srow__len">${fmtMin(l.minutes)}</span>
+    <span class="la-srow__state" data-lesson-state></span>
+  </span>
+</li>`;
+}
+
+/** CourseCover: the coloured panel that makes a course card read like a course tile. */
+export function CourseCover(/** @type {Course} */ c, { compact = false } = {}) {
+  const s = courseStats(c);
+  return `<div class="la-cover la-cover--stage-${c.stage % 6}" aria-hidden="true">
+  <span class="la-cover__stage">Stage ${c.stage}</span>
+  <span class="la-cover__mark">${esc(c.title.split(' ').slice(0, 2).map((w) => w[0]).join(''))}</span>
+  ${compact ? '' : `<span class="la-cover__meta">${s.total} lessons · about ${fmtMin(s.minutes)}</span>`}
+</div>`;
+}
+
+/** Mobile dock: an app-style bottom navigation, shown on small screens. */
+export function AppDock(/** @type {string} */ active) {
+  const I = {
+    home: '<path d="M3 10.5 12 3l9 7.5"/><path d="M5.5 9.5V20h13V9.5"/><path d="M10 20v-5h4v5"/>',
+    courses: '<rect x="3" y="4" width="7" height="7" rx="1.5"/><rect x="14" y="4" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>',
+    roadmap: '<circle cx="6" cy="6" r="2.2"/><circle cx="18" cy="12" r="2.2"/><circle cx="6" cy="18" r="2.2"/><path d="M8 7.2 16 11M8 16.8 16 13"/>',
+    practice: '<path d="M4 19V5"/><path d="M4 19h16"/><path d="M8 16V11"/><path d="M13 16V7"/><path d="M18 16v-3"/>',
+    saved: '<path d="M6 3h12v18l-6-4.5L6 21z"/>',
+  };
+  const items = [
+    ['overview', '/learn/', 'Home', I.home],
+    ['courses', '/learn/courses/', 'Courses', I.courses],
+    ['roadmap', '/learn/roadmap/', 'Roadmap', I.roadmap],
+    ['practice', '/learn/practice/', 'Practice', I.practice],
+    ['saved', '/learn/saved/', 'My learning', I.saved],
+  ];
+  return `<nav class="la-dock" aria-label="Main">
+  <ul>${items.map(([key, href, label, icon]) => `<li><a href="${href}"${key === active ? ' aria-current="page"' : ''}>
+    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${icon}</svg>
+    <span>${label}</span></a></li>`).join('')}</ul>
+</nav>`;
+}

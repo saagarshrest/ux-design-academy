@@ -10,13 +10,16 @@ The live version runs inside Saagar Shrestha's portfolio at **[saagarshrest.com.
 
 - **13-stage curriculum** (`learn-src/content/curriculum.mjs`): orientation, visual design, research, information architecture, wireframing, Figma, UI and design systems, interaction design, usability testing, accessibility, product thinking, portfolio and career, plus optional specialisms.
 - **Written lessons** (`learn-src/content/lessons/`): each one has objectives, an explanation, real-project context, a worked example with a diagram, a step-by-step walkthrough, common mistakes, a knowledge check with explanations, an exercise, a self-assessment checklist, a summary and further reading. Stages 0 and 1 are complete; see [`learn-src/CONTENT-INVENTORY.md`](learn-src/CONTENT-INVENTORY.md) for what is written and what remains.
+- **Companion videos** (`learn-src/content/videos.mjs`): one video per written lesson, from established channels such as Nielsen Norman Group, Figma, the Interaction Design Foundation, Flux Academy, ArtClass, Sarah Renae Clark and The Accessibility Guy. Every id was checked against YouTube, and the runtime shown is the real one. The video is embedded with the privacy-friendly `youtube-nocookie` domain, never autoplays, and is left out of printing.
 - **Practice library**: short exercises with briefs, checklists, criteria, hints and illustrative solutions.
 - **Four portfolio projects**: full briefs with research plans, worksheets, testing plans, milestones and rubrics. All businesses and data in them are fictional.
 - **Templates**: 14 copyable Markdown templates (research plan, interview guide, usability test plan, accessibility audit, case study outline and more).
 - **Glossary**: over 100 terms with examples and related terms.
 - **Resource library**: curated external references. Links were checked when they were added.
 
-In the browser, learners can mark lessons complete, bookmark pages, write notes, answer knowledge checks, tick checklists and project milestones, and search everything. Progress is stored in `localStorage` only: it does not sync between devices, and it can be backed up and restored as a JSON file from the "My learning" page.
+The site behaves like a learning platform rather than a document site: a dashboard with progress rings, course tiles, a video-first lesson page with a syllabus, a sticky mobile action bar and a bottom navigation dock. On a phone it is laid out as an app.
+
+In the browser, learners can mark lessons complete, bookmark pages, write notes, answer knowledge checks, tick checklists and project milestones, and search everything. Watching a lesson's video to the end is recorded too. Progress is stored in `localStorage` only: it does not sync between devices, and it can be backed up and restored as a JSON file from the "My learning" page.
 
 ## Run it locally
 
@@ -62,6 +65,7 @@ The academy is served from `/learn/` on every host, because all its URLs are abs
 | Path | Purpose |
 |---|---|
 | `learn-src/content/` | All content, kept separate from presentation |
+| `learn-src/content/videos.mjs` | The companion video library, one entry per written lesson |
 | `learn-src/types.d.ts` | TypeScript types for the content model (checked through JSDoc `@ts-check`) |
 | `learn-src/components.mjs` | Presentation components that return HTML strings |
 | `learn-src/pages.mjs` | One template per route |
@@ -80,7 +84,10 @@ The build fails if content is invalid, for example a duplicate slug, a missing l
 
 1. Find the lesson's slug in `learn-src/content/curriculum.mjs`.
 2. Add a body for that slug to a file in `learn-src/content/lessons/` (see `stage-0.mjs` for the shape).
-3. Run `npm run build`. The lesson becomes "published", gets its own page, and counts towards progress.
+3. Add a companion video for it in `learn-src/content/videos.mjs`.
+4. Run `npm run build`. The lesson becomes "published", gets its own page, and counts towards progress.
+
+The build fails if content is invalid, for example a duplicate slug, a missing lesson section, a knowledge-check answer out of range, a broken internal link or anchor, or a video with a malformed id. It warns when a written lesson has no video yet.
 
 ## Notes
 

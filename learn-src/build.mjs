@@ -28,6 +28,7 @@ import exercises from './content/exercises.mjs';
 import projects from './content/projects.mjs';
 import career from './content/career.mjs';
 import paths from './content/paths.mjs';
+import { videos } from './content/videos.mjs';
 import { AcademyHeader, esc, lessonUrl, courseUrl } from './components.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -71,7 +72,7 @@ for (const f of readdirSync(join(HERE, 'content/lessons')).filter((f) => f.endsW
 /** @type {Course[]} */
 const courses = courseMeta.map((c) => ({
   ...c,
-  lessons: c.lessons.map((l) => (bodies[l.slug] ? { ...l, status: /** @type {const} */ ('published'), body: bodies[l.slug] } : { ...l, status: /** @type {const} */ ('planned') })),
+  lessons: c.lessons.map((l) => (bodies[l.slug] ? { ...l, status: /** @type {const} */ ('published'), body: bodies[l.slug], video: videos[l.slug] } : { ...l, status: /** @type {const} */ ('planned') })),
 }));
 
 /* --------------------------------------------------------------- validate */
@@ -135,6 +136,19 @@ const tplSlugs = new Set();
 for (const t of templates) { if (tplSlugs.has(t.slug)) fail(`Duplicate template ${t.slug}`); tplSlugs.add(t.slug); }
 for (const r of resources) if (!/^https:\/\//.test(r.url)) fail(`Resource "${r.title}" must use https`);
 
+/* The video library. Every id has to look like a YouTube id, and a video
+   may only point at a lesson that exists. */
+for (const [slug, v] of Object.entries(videos)) {
+  if (!lessonsBySlug[slug]) fail(`Video "${slug}" has no matching lesson`);
+  if (!/^[A-Za-z0-9_-]{11}$/.test(v.id)) fail(`Video "${slug}": "${v.id}" is not a YouTube video id`);
+  if (!v.title || !v.channel) fail(`Video "${slug}": needs a title and a channel`);
+  if (!Number.isFinite(v.seconds) || v.seconds < 30) fail(`Video "${slug}": needs a real runtime`);
+  if (!v.note) fail(`Video "${slug}": needs a note explaining what the learner gets from it`);
+}
+for (const c of courses) for (const l of c.lessons) {
+  if (l.status === 'published' && !videos[l.slug]) warn(`Lesson ${l.slug} has no video yet`);
+}
+
 /* --------------------------------------------------------------- markdown */
 /** Minimal Markdown for templates: headings, paragraphs, lists, task lists, tables, quotes, rules, bold, italic, code. */
 function renderMd(/** @type {string} */ md) {
@@ -191,10 +205,10 @@ const chrome = loadChrome(ROOT);
 const pages = [];
 const data = { courses, projects, exercises, paths, glossary, resources, templates, first: /** @type {Lesson} */ (first) };
 pages.push(P.homePage(data), P.roadmapPage(data), P.coursesPage(data), P.practicePage(data), P.projectsPage(data),
-  P.resourcesPage(data), P.glossaryPage(data), P.careerPage({ career }), P.searchPage(), P.savedPage());
-for (const c of courses) pages.push(P.coursePage(c, courses, projects));
+  P.resourcesPage({ ...data, videos, lessonTitle: (slug) => lessonsBySlug[slug]?.lesson.title || slug }), P.glossaryPage(data), P.careerPage({ career }), P.searchPage(), P.savedPage());
+for (const c of courses) pages.push(P.coursePage(c, courses, projects, videos));
 published.forEach(({ l, c }, i) => {
-  pages.push(P.lessonPage({ lesson: l, course: c, prev: published[i - 1]?.l || null, next: published[i + 1]?.l || null, index: c.lessons.indexOf(l), lessonsBySlug }));
+  pages.push(P.lessonPage({ lesson: l, course: c, prev: published[i - 1]?.l || null, next: published[i + 1]?.l || null, index: c.lessons.indexOf(l), lessonsBySlug, video: l.video }));
 });
 for (const e of exercises) pages.push(P.exercisePage(e, lessonsBySlug));
 for (const p of projects) pages.push(P.projectPage(p, courses));
@@ -241,7 +255,7 @@ if (errors.length) {
 const catalog = {
   version: 1,
   first: first ? lessonUrl(first.slug) : '/learn/',
-  courses: courses.map((c) => ({ slug: c.slug, stage: c.stage, title: c.title, optional: c.optional, url: courseUrl(c.slug), lessons: c.lessons.map((l) => ({ slug: l.slug, title: l.title, minutes: l.minutes, published: l.status === 'published', url: l.status === 'published' ? lessonUrl(l.slug) : `${courseUrl(c.slug)}#lesson-${l.slug}` })) })),
+  courses: courses.map((c) => ({ slug: c.slug, stage: c.stage, title: c.title, optional: c.optional, url: courseUrl(c.slug), lessons: c.lessons.map((l) => ({ slug: l.slug, title: l.title, minutes: l.minutes, published: l.status === 'published', video: l.status === 'published' && !!l.video, url: l.status === 'published' ? lessonUrl(l.slug) : `${courseUrl(c.slug)}#lesson-${l.slug}` })) })),
   projects: projects.map((p) => ({ slug: p.slug, title: p.title, url: `/learn/projects/${p.slug}/`, milestones: p.milestones.map((m) => ({ id: m.id, title: m.title, tasks: m.tasks.length })) })),
 };
 const strip = (/** @type {string} */ h) => h.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
@@ -249,10 +263,9 @@ const index = [
   ...courses.map((c) => ({ type: 'course', title: `Stage ${c.stage}: ${c.title}`, url: courseUrl(c.slug), text: `${c.short} ${c.outcomes.join(' ')}`, meta: c.optional ? 'Optional course' : 'Core course' })),
   ...courses.flatMap((c) => c.lessons.map((l) => ({
     type: 'lesson', title: l.title, url: l.status === 'published' ? lessonUrl(l.slug) : `${courseUrl(c.slug)}#lesson-${l.slug}`,
-    text: l.body ? `${l.summary} ${l.body.objectives.join(' ')} ${strip(l.body.explanation).slice(0, 1200)} ${l.body.summary.join(' ')}` : l.summary,
+    text: `${l.body ? `${l.summary} ${l.body.objectives.join(' ')} ${strip(l.body.explanation).slice(0, 1200)} ${l.body.summary.join(' ')}` : l.summary} ${l.video ? `${l.video.title} ${l.video.channel}` : ''}`,
     meta: `Stage ${c.stage} · ${l.status === 'published' ? `${l.minutes} min` : 'In writing'}`,
-  }))),
-  ...exercises.map((e) => ({ type: 'exercise', title: e.title, url: `/learn/practice/${e.slug}/`, text: `${e.summary} ${e.topic} ${e.prompt}`, meta: `${e.topic} · ${e.level}` })),
+  }))),  ...exercises.map((e) => ({ type: 'exercise', title: e.title, url: `/learn/practice/${e.slug}/`, text: `${e.summary} ${e.topic} ${e.prompt}`, meta: `${e.topic} · ${e.level}` })),
   ...projects.map((p) => ({ type: 'project', title: p.title, url: `/learn/projects/${p.slug}/`, text: `${p.short} ${strip(p.problem)}`, meta: `Project ${p.number}` })),
   ...glossary.map((t) => ({ type: 'term', title: t.term, url: `/learn/glossary/#term-${t.term.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}`, text: `${t.definition} ${t.related.join(' ')}`, meta: `Glossary · ${t.group}` })),
   ...templates.map((t) => ({ type: 'template', title: `${t.title} template`, url: `/learn/resources/templates/${t.slug}/`, text: t.summary, meta: 'Template' })),
