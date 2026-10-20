@@ -84,8 +84,8 @@ export default [
   CAREER('Digital, data and technology roles and skills', 'https://understand-digital-data-roles-skills.service.gov.uk/', 'UK Government', 'Detailed public descriptions of design roles and the skills expected at each level, useful for planning your growth.', 'Free'),
   CAREER('GOV.UK Design Notes', 'https://designnotes.blog.gov.uk/', 'Government Digital Service', 'Designers writing about real projects, decisions and mistakes. Good models for case study writing.', 'Free'),
 
-  BOOKS('Don\'t Make Me Think, Revisited', 'https://sensible.com/dont-make-me-think/', 'Steve Krug', 'A short, practical classic on web usability. A book; check the publisher page for formats.'),
-  BOOKS('Rocket Surgery Made Easy', 'https://sensible.com/rocket-surgery-made-easy/', 'Steve Krug', 'A do-it-yourself guide to running simple usability tests.'),
+  BOOKS('Don\'t Make Me Think, Revisited', 'https://web.archive.org/web/2024/https://sensible.com/dont-make-me-think/', 'Steve Krug', 'A short, practical classic on web usability. A book; check the publisher page for formats. (The author\'s site is offline; this is an archived copy.)'),
+  BOOKS('Rocket Surgery Made Easy', 'https://web.archive.org/web/2024/https://sensible.com/rocket-surgery-made-easy/', 'Steve Krug', 'A do-it-yourself guide to running simple usability tests. (The author\'s site is offline; this is an archived copy.)'),
   BOOKS('The Design of Everyday Things', 'https://jnd.org/books/', 'Don Norman', 'The origin of many core interaction design ideas, including affordances, signifiers and feedback.'),
   BOOKS('Refactoring UI', 'https://refactoringui.com/', 'Adam Wathan and Steve Schoger', 'Practical visual design tactics for interfaces, written for developers and designers.'),
   BOOKS('Laws of UX', 'https://lawsofux.com/', 'Jon Yablonski', 'Short summaries of psychology principles used in interface design.'),

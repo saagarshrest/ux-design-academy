@@ -254,7 +254,7 @@ export function PreviousNextLesson(/** @type {Lesson | null} */ prev, /** @type 
 
 /** SearchAndFilters: a search box plus select filters for any [data-filterable] list. */
 export function SearchAndFilters(/** @type {string} */ id, /** @type {{ key: string, label: string, options: [string, string][] }[]} */ filters, placeholder = 'Search') {
-  return `<form class="la-filters" data-filters-for="${id}" role="search" onsubmit="return false">
+  return `<form class="la-filters" data-filters-for="${id}" role="search">
   <div class="la-field la-field--grow"><label for="${id}-q">Search</label><input id="${id}-q" type="search" data-filter-search placeholder="${esc(placeholder)}" autocomplete="off"></div>
   ${filters.map((f) => `<div class="la-field"><label for="${id}-${f.key}">${esc(f.label)}</label><select id="${id}-${f.key}" data-filter="${f.key}"><option value="">All</option>${f.options.map(([v, l]) => `<option value="${esc(v)}">${esc(l)}</option>`).join('')}</select></div>`).join('')}
   <p class="la-filters__count" data-filter-count aria-live="polite"></p>

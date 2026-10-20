@@ -20,7 +20,7 @@ In the browser, learners can mark lessons complete, bookmark pages, write notes,
 
 ## Run it locally
 
-Requires Node.js 20 or newer and Python 3 (for the static server). There is nothing to install.
+Requires Node.js 22 or newer and Python 3 (for the static server). There is nothing to install.
 
 ```sh
 npm run build   # validate the content and generate /learn and /404.html
@@ -29,6 +29,33 @@ npm run serve   # then open http://localhost:8000/learn/
 ```
 
 `npm run check` validates the content without writing any files.
+
+`npm run build:vercel` builds the complete site into `/dist` (pages, stylesheet, scripts, favicon, `index.html`, `robots.txt`, `sitemap.xml` and `404.html`). `npm run preview` builds it and serves `/dist` on <http://localhost:8000/learn/>.
+
+## Deploying to Vercel
+
+The repository is ready to deploy: `vercel.json` builds the site with `npm run build:vercel` and publishes `/dist`. Import the repository in Vercel and deploy; no settings need changing.
+
+What the deploy build produces:
+
+| Path in `/dist` | Purpose |
+|---|---|
+| `index.html` | Entry point that sends visitors to `/learn/` |
+| `learn/**` | Every academy page, plus `catalog.json` and `search-index.json` |
+| `css/learn.css`, `js/learn/*` | The stylesheet and the browser script the pages load |
+| `favicon.svg` | Site icon |
+| `404.html` | Not-found page |
+| `robots.txt`, `sitemap.xml` | Crawling hints, pointing at the sitemap |
+
+Build-time environment variables, all optional:
+
+| Variable | Effect |
+|---|---|
+| `SITE_URL` | Public origin used for canonical links, the sitemap and structured data. Defaults to the Vercel production domain, or `https://saagarshrest.com.np` outside Vercel |
+| `GA_ID` | Google Analytics measurement ID. Without it a standalone build loads no analytics at all |
+| `OG_IMAGE_URL` | Absolute URL of the social preview image |
+
+The academy is served from `/learn/` on every host, because all its URLs are absolute (`/learn/...`). The root of the deployment redirects there.
 
 ## How it is built
 
@@ -39,10 +66,11 @@ npm run serve   # then open http://localhost:8000/learn/
 | `learn-src/components.mjs` | Presentation components that return HTML strings |
 | `learn-src/pages.mjs` | One template per route |
 | `learn-src/shell.mjs` | Page shell. Inside the portfolio it reuses the site's nav and footer; on its own it uses a minimal header |
-| `learn-src/build.mjs` | Validates content and links, then writes pages, `catalog.json`, `search-index.json` and the content inventory |
+| `learn-src/build.mjs` | Validates content and links, then writes pages, `catalog.json`, `search-index.json` and the content inventory. With `--deploy` it writes a self-contained site to `/dist` |
 | `js/learn/store.mjs` | Pure learning logic: versioned storage, progress, search, filters |
 | `js/learn/app.js` | Browser behaviour, attached to server-rendered HTML through `data-*` attributes |
 | `css/learn.css` | Styles |
+| `public/favicon.svg` | Icon used by a standalone build |
 
 Pages are complete, readable HTML without JavaScript; scripts only add the interactive features.
 
@@ -56,6 +84,6 @@ The build fails if content is invalid, for example a duplicate slug, a missing l
 
 ## Notes
 
-- Generated output (`/learn/`, `/404.html`) is not committed; run the build to produce it.
+- Generated output (`/learn/`, `/404.html`, `/dist/`) is not committed; run the build to produce it.
 - The site uses absolute `/learn/...` URLs, so serve it from a domain root.
 - External resources are third-party content and may change.

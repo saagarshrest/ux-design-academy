@@ -145,6 +145,9 @@
 .la-tag--core { border-color: var(--la-ink); color: var(--la-ink); }
 .la-tag--optional { border-style: dashed; }
 .la-tag--ext { border-style: dotted; }
+.la-tag--beginner { border-color: var(--la-ok); color: var(--la-ok); }
+.la-tag--intermediate { border-color: var(--la-acc); color: var(--la-acc); }
+.la-tag--advanced { border-color: var(--la-ink); color: var(--la-ink); }
 .la-meta { display: flex; flex-wrap: wrap; gap: .25rem .9rem; font-size: .82rem; color: var(--la-mute); }
 .la-meta li { position: relative; }
 .la-meta li + li::before { content: '·'; position: absolute; left: -.6rem; }
@@ -186,6 +189,8 @@
 .la-prog__txt { margin-top: .5rem; font-size: .82rem; color: var(--la-mute); }
 .la-prog--lg .la-prog__bar { height: 12px; }
 .la-prog--lg .la-prog__txt { font-size: .95rem; }
+.la-prog--sm .la-prog__bar { height: 4px; }
+.la-prog--sm .la-prog__txt { font-size: .76rem; margin-top: .35rem; }
 .la-prog + .la-prog { margin-top: 1.2rem; }
 
 /* --------------------------------------------------------------- notes */

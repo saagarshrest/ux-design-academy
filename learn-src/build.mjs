@@ -4,12 +4,18 @@
 
      node learn-src/build.mjs          validate content and write /learn
      node learn-src/build.mjs --check  validate only, write nothing
+     node learn-src/build.mjs --deploy validate and write a complete,
+                                      self-contained site into /dist
 
-   Output: /learn/** (generated, do not edit by hand), /learn/catalog.json,
-   /learn/search-index.json, the academy block in /sitemap.xml and
-   learn-src/CONTENT-INVENTORY.md.
+   Output (default): /learn/** (generated, do not edit by hand),
+   /learn/catalog.json, /learn/search-index.json, the academy block in
+   /sitemap.xml and learn-src/CONTENT-INVENTORY.md.
+
+   Output (--deploy): everything above inside /dist, plus the static
+   assets the pages reference, an index page, robots.txt and a sitemap,
+   ready to be served by any static host.
    ===================================================================== */
-import { readFileSync, writeFileSync, mkdirSync, rmSync, readdirSync, existsSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, rmSync, readdirSync, existsSync, copyFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { createHash } from 'node:crypto';
@@ -22,14 +28,26 @@ import exercises from './content/exercises.mjs';
 import projects from './content/projects.mjs';
 import career from './content/career.mjs';
 import paths from './content/paths.mjs';
-import { loadChrome, page, SITE } from './shell.mjs';
 import { AcademyHeader, esc, lessonUrl, courseUrl } from './components.mjs';
-import * as P from './pages.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(HERE, '..');
-const OUT = join(ROOT, 'learn');
 const CHECK_ONLY = process.argv.includes('--check');
+const DEPLOY = process.argv.includes('--deploy');
+const DIST = join(ROOT, 'dist');
+const OUT = DEPLOY ? join(DIST, 'learn') : join(ROOT, 'learn');
+
+/* The public origin. In a deploy build this defaults to the Vercel
+   production domain of the project; everywhere else it stays on the
+   portfolio. shell.mjs and pages.mjs read it from the environment, so it
+   has to be set before they are imported. */
+if (DEPLOY && !process.env.SITE_URL) {
+  const host = process.env.VERCEL_PROJECT_PRODUCTION_URL || (process.env.VERCEL_URL ? new URL(process.env.VERCEL_URL).host : '');
+  if (host) process.env.SITE_URL = `https://${host}`;
+}
+
+const { loadChrome, page, SITE } = await import('./shell.mjs');
+const P = await import('./pages.mjs');
 
 /** @typedef {import('./types').Course} Course */
 /** @typedef {import('./types').Lesson} Lesson */
@@ -200,6 +218,20 @@ for (const p of pages) {
 const idsByPath = Object.fromEntries(pages.map((p) => [p.path, new Set([...p.body.matchAll(/\sid="([^"]+)"/g)].map((m) => m[1]))]));
 for (const p of pages) for (const m of p.body.matchAll(/href="(\/learn\/[^"#]*)#([^"]+)"/g)) if (idsByPath[m[1]] && !idsByPath[m[1]].has(m[2])) fail(`${p.path}: missing anchor ${m[1]}#${m[2]}`);
 
+/* Assets the academy owns and every page links to. They have to exist in the
+   build output, or the deployed pages load without styles or scripts. Icons
+   and other assets belong to the site the academy is embedded in, so they are
+   not checked here. */
+const OWN_ASSETS = ['css/learn.css', 'js/learn/app.js', 'js/learn/store.mjs'];
+for (const p of pages) {
+  const html = page(chrome, { ...p, header: AcademyHeader(p.active), version });
+  for (const [, ref] of html.matchAll(/(?:href|src)="(\/[^"]*)"/g)) {
+    const rel = ref.split('#')[0].split('?')[0].replace(/^\//, '');
+    if (!OWN_ASSETS.includes(rel)) continue;
+    if (!existsSync(join(ROOT, rel))) fail(`${p.path}: missing asset ${ref}`);
+  }
+}
+
 if (errors.length) {
   console.error(`\n✗ Link validation failed (${errors.length}):\n  - ${errors.join('\n  - ')}\n`);
   process.exit(1);
@@ -229,9 +261,11 @@ const index = [
 ];
 
 if (!CHECK_ONLY) {
+  const SITE_ROOT = DEPLOY ? DIST : ROOT;
   rmSync(OUT, { recursive: true, force: true });
+  if (DEPLOY) rmSync(DIST, { recursive: true, force: true });
   for (const p of pages) {
-    const file = join(ROOT, p.path, 'index.html');
+    const file = join(SITE_ROOT, p.path, 'index.html');
     mkdirSync(dirname(file), { recursive: true });
     writeFileSync(file, page(chrome, { ...p, header: AcademyHeader(p.active), version }));
   }
@@ -243,20 +277,58 @@ if (!CHECK_ONLY) {
   <p class="la-eyebrow">Error 404</p>
   <h1 class="la-h1">This page <em>doesn't exist.</em></h1>
   <p class="la-lead">The link may be out of date, or the address may have a typo. If you were looking for a lesson, it may still be in writing; the course pages list every lesson and its status.</p>
-  <div class="la-actions"><a class="la-btn" href="/learn/roadmap/">Academy roadmap</a><a class="la-btn la-btn--ghost" href="/learn/search/">Search the academy</a><a class="la-btn la-btn--ghost" href="/">Home page</a></div>
+  <div class="la-actions"><a class="la-btn" href="/learn/roadmap/">Academy roadmap</a><a class="la-btn la-btn--ghost" href="/learn/search/">Search the academy</a><a class="la-btn la-btn--ghost" href="/learn/">Academy home</a></div>
 </div></header>`,
   });
-  writeFileSync(join(ROOT, '404.html'), notFound);
+  writeFileSync(join(SITE_ROOT, '404.html'), notFound);
   writeFileSync(join(OUT, 'catalog.json'), JSON.stringify(catalog));
   writeFileSync(join(OUT, 'search-index.json'), JSON.stringify(index));
 
-  // sitemap: replace the academy block, keep everything else untouched
-  const smPath = join(ROOT, 'sitemap.xml');
-  if (existsSync(smPath)) {
-  let sm = readFileSync(smPath, 'utf8').replace(/\s*<!-- learn:start -->[\s\S]*<!-- learn:end -->/, '');
-  const urls = pages.filter((p) => !p.noindex).map((p) => `  <url>\n    <loc>${SITE}${p.path}</loc>\n    <changefreq>monthly</changefreq>\n    <priority>${p.path === '/learn/' ? '0.8' : '0.6'}</priority>\n  </url>`).join('\n');
-  sm = sm.replace('</urlset>', `  <!-- learn:start -->\n${urls}\n  <!-- learn:end -->\n</urlset>`);
-  writeFileSync(smPath, sm);
+  const sitemapUrls = pages.filter((p) => !p.noindex).map((p) => `  <url>\n    <loc>${SITE}${p.path}</loc>\n    <changefreq>monthly</changefreq>\n    <priority>${p.path === '/learn/' ? '0.8' : '0.6'}</priority>\n  </url>`).join('\n');
+
+  if (DEPLOY) {
+    /* A deploy build has to stand on its own: copy the stylesheet and the
+       scripts the pages reference, and add the files a static host needs. */
+    for (const [from, to] of [['css/learn.css', 'css/learn.css'], ['js/learn/app.js', 'js/learn/app.js'], ['js/learn/store.mjs', 'js/learn/store.mjs'], ['public/favicon.svg', 'favicon.svg']]) {
+      const src = join(ROOT, from);
+      if (!existsSync(src)) { warn(`Deploy: ${from} is missing, skipped`); continue; }
+      const dest = join(DIST, to);
+      mkdirSync(dirname(dest), { recursive: true });
+      copyFileSync(src, dest);
+    }
+    // Root entry point: the academy itself lives under /learn/.
+    writeFileSync(join(DIST, 'index.html'), `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UI/UX Design Academy</title>
+<meta name="description" content="A free, self-guided UI/UX design academy: a structured roadmap, written lessons with examples, exercises, portfolio projects, templates and a glossary.">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="canonical" href="${SITE}/learn/">
+<meta http-equiv="refresh" content="0; url=/learn/">
+<link rel="stylesheet" href="/css/learn.css?v=${version}">
+</head>
+<body class="la-body" style="display:grid;place-items:center;min-height:100vh;margin:0;text-align:center">
+  <main class="la-wrap la-narrow">
+    <p class="la-eyebrow">UI/UX Design Academy</p>
+    <h1 class="la-h1" style="max-width:none">Taking you to the <em>academy.</em></h1>
+    <p class="la-lead" style="margin-left:auto;margin-right:auto">If nothing happens, <a href="/learn/">open the academy</a>.</p>
+  </main>
+  <script>window.location.replace('/learn/');</script>
+</body>
+</html>
+`);
+    writeFileSync(join(DIST, 'robots.txt'), `User-agent: *\nAllow: /\n\nSitemap: ${SITE}/sitemap.xml\n`);
+    writeFileSync(join(DIST, 'sitemap.xml'), `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${sitemapUrls}\n</urlset>\n`);
+  } else {
+    // sitemap: replace the academy block, keep everything else untouched
+    const smPath = join(ROOT, 'sitemap.xml');
+    if (existsSync(smPath)) {
+      let sm = readFileSync(smPath, 'utf8').replace(/\s*<!-- learn:start -->[\s\S]*<!-- learn:end -->/, '');
+      sm = sm.replace('</urlset>', `  <!-- learn:start -->\n${sitemapUrls}\n  <!-- learn:end -->\n</urlset>`);
+      writeFileSync(smPath, sm);
+    }
   }
 
   // content inventory

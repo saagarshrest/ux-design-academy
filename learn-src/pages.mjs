@@ -475,7 +475,10 @@ export function templatePage(t, renderMd) {
 
 /** @param {{ glossary: import('./types').GlossaryTerm[] }} d */
 export function glossaryPage(d) {
-  const groups = ['Research', 'Interaction', 'Visual design', 'Prototyping', 'Accessibility', 'Product thinking', 'Design systems'];
+  // The canonical order first, then any group the content introduces later.
+  const order = ['Research', 'Interaction', 'Visual design', 'Prototyping', 'Accessibility', 'Product thinking', 'Design systems'];
+  const present = new Set(d.glossary.map((t) => t.group));
+  const groups = [...order.filter((g) => present.has(g)), ...[...present].filter((g) => !order.includes(g))];
   const body = `
 ${hero('Glossary', 'Design words, <em>explained.</em>', `${d.glossary.length} terms used in UI, UX and product design, each with a plain definition, a practical example and related terms.`)}
 <div class="la-wrap la-page la-narrow">
@@ -513,7 +516,7 @@ ${hero('Search', 'Search the <em>academy.</em>', 'Lessons, courses, exercises, p
     <label for="la-search-q" class="la-h3">What are you looking for?</label>
     <div class="la-searchbox__row"><input id="la-search-q" name="q" type="search" data-live-search="la-search-results" data-sync-url autocomplete="off" placeholder="Search"><button class="la-btn" type="submit">Search</button></div>
     <fieldset class="la-chips" data-search-types><legend class="la-sr">Filter by type</legend>
-      ${[['', 'Everything'], ['lesson', 'Lessons'], ['course', 'Courses'], ['exercise', 'Exercises'], ['project', 'Projects'], ['term', 'Glossary'], ['template', 'Templates'], ['resource', 'Resources']].map(([v, l], i) => `<label class="la-chip"><input type="radio" name="type" value="${v}"${i === 0 ? ' checked' : ''}><span>${l}</span></label>`).join('')}
+      ${[['', 'Everything'], ['lesson', 'Lessons'], ['course', 'Courses'], ['exercise', 'Exercises'], ['project', 'Projects'], ['term', 'Glossary'], ['template', 'Templates'], ['resource', 'Resources'], ['page', 'Guides']].map(([v, l], i) => `<label class="la-chip"><input type="radio" name="type" value="${v}"${i === 0 ? ' checked' : ''}><span>${l}</span></label>`).join('')}
     </fieldset>
   </form>
   <div id="la-search-results" class="la-live la-live--page" aria-live="polite">

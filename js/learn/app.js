@@ -245,6 +245,8 @@ function initFilters() {
     };
     q?.addEventListener('input', apply);
     selects.forEach((s) => s.addEventListener('change', apply));
+    // The form filters in place; pressing Enter should not reload the page.
+    form.addEventListener('submit', (e) => e.preventDefault());
     apply();
   }
 }
