@@ -57,8 +57,22 @@ Build-time environment variables, all optional:
 | `SITE_URL` | Public origin used for canonical links, the sitemap and structured data. Defaults to the Vercel production domain, or `https://saagarshrest.com.np` outside Vercel |
 | `GA_ID` | Google Analytics measurement ID. Without it a standalone build loads no analytics at all |
 | `OG_IMAGE_URL` | Absolute URL of the social preview image |
+| `ADSENSE_CLIENT` | AdSense publisher id (`ca-pub-...`). Without it the site loads no ad code at all |
+| `ADSENSE_SLOT` | AdSense ad unit id. Needs `ADSENSE_CLIENT`; a labelled slot then appears on the home page and under each lesson video |
 
 The academy is served from `/learn/` on every host, because all its URLs are absolute (`/learn/...`). The root of the deployment redirects there.
+
+### The custom domain
+
+The project is attached to **`learn.saagarshrest.com.np`**, which is a subdomain of the domain already used for the portfolio. It needs one DNS record, added at the domain registrar (Cloudflare):
+
+| Type | Name | Value | Proxy |
+|---|---|---|---|
+| CNAME | `learn` | `96e47e0bf69956a6.vercel-dns-017.com.` | DNS only (grey cloud) |
+
+Once that record resolves, Vercel issues the certificate automatically and the site is served from the domain. `SITE_URL` is set to `https://learn.saagarshrest.com.np` on the project, so the canonical links, the sitemap and `robots.txt` all point at the domain. The `*.vercel.app` address keeps working as an alias.
+
+For AdSense, the domain that has to be approved is `saagarshrest.com.np` — a subdomain is covered by its parent. The `ads.txt` file therefore belongs at the root of that domain, which is served from GitHub Pages, not from here.
 
 ## How it is built
 

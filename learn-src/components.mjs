@@ -295,6 +295,21 @@ export const ol = (/** @type {string[]} */ items, cls = '') => `<ol${cls ? ` cla
 
 /* ------------------------------------------------------------- e-learning */
 
+/** Advertising. Nothing renders unless both ids are configured, so the
+    academy carries no ad code for anyone who does not ask for it. */
+const ADSENSE_CLIENT = String(process.env.ADSENSE_CLIENT || '').trim();
+const ADSENSE_SLOT = String(process.env.ADSENSE_SLOT || '').trim();
+
+/** A labelled ad unit. */
+export function AdSlot(label = 'Sponsored') {
+  if (!ADSENSE_CLIENT || !ADSENSE_SLOT) return '';
+  return `<aside class="la-ad" aria-label="${esc(label)}">
+  <p class="la-ad__label">${esc(label)}</p>
+  <ins class="adsbygoogle" style="display:block" data-ad-client="${esc(ADSENSE_CLIENT)}" data-ad-slot="${esc(ADSENSE_SLOT)}" data-ad-format="auto" data-full-width-responsive="true"></ins>
+  <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+</aside>`;
+}
+
 /** Video runtime: "5:45" under an hour, "1 h 14 min" above it. */
 export const fmtDuration = (/** @type {number} */ seconds) => {
   const total = Math.max(0, Math.round(seconds));

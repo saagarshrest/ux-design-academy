@@ -4,7 +4,7 @@ import {
   esc, fmtMin, lessonUrl, courseUrl, extLink, Breadcrumbs, ProgressIndicator, CourseCard, courseStats, levelTag, coreTag,
   RoadmapOverview, LearningObjectives, LessonTableOfContents, KnowledgeCheck, Checklist, ExerciseCard, AssignmentBrief,
   AssessmentRubric, ResourceCard, BookmarkControl, PreviousNextLesson, SearchAndFilters, GlossarySearch, ProjectMilestoneList,
-  EmptyState, ulText, ul, ol, VideoPlayer, ProgressRing, LessonRow, CourseCover, fmtDuration,
+  EmptyState, ulText, ul, ol, VideoPlayer, ProgressRing, LessonRow, CourseCover, fmtDuration, AdSlot,
 } from './components.mjs';
 import { SITE } from './shell.mjs';
 
@@ -77,10 +77,13 @@ export function homePage(d) {
       ${ProgressIndicator('core', 'Core curriculum progress', 'lg')}
       ${storageNote}
     </div>
-    <div class="la-searchbox">
-      <h2 class="la-h3"><label for="la-home-q">Find a lesson, term or resource</label></h2>
-      <div class="la-searchbox__row"><input id="la-home-q" type="search" data-live-search="la-home-results" placeholder="Try “hierarchy”, “persona” or “contrast”" autocomplete="off"></div>
-      <div id="la-home-results" class="la-live" aria-live="polite"></div>
+    <div>
+      ${AdSlot('Sponsored')}
+      <div class="la-searchbox">
+        <h2 class="la-h3"><label for="la-home-q">Find a lesson, term or resource</label></h2>
+        <div class="la-searchbox__row"><input id="la-home-q" type="search" data-live-search="la-home-results" placeholder="Try “hierarchy”, “persona” or “contrast”" autocomplete="off"></div>
+        <div id="la-home-results" class="la-live" aria-live="polite"></div>
+      </div>
     </div>
   </div>
 </section>
@@ -294,6 +297,7 @@ export function lessonPage(d) {
 
   <article class="la-lesson__main">
     ${video}
+    ${AdSlot('Sponsored')}
     ${LearningObjectives(b.objectives)}
     ${sec('explanation', 'The idea', `<div class="la-prose">${b.explanation}</div>`)}
     ${sec('why', 'Why it matters in real projects', `<div class="la-prose">${b.why}</div>`)}
