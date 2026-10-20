@@ -296,9 +296,8 @@ export const ol = (/** @type {string[]} */ items, cls = '') => `<ol${cls ? ` cla
 /* ------------------------------------------------------------- e-learning */
 
 /** Advertising. Nothing renders unless both ids are configured, so the
-    academy carries no ad code for anyone who does not ask for it. */
-const ADSENSE_CLIENT = String(process.env.ADSENSE_CLIENT || '').trim();
-const ADSENSE_SLOT = String(process.env.ADSENSE_SLOT || '').trim();
+    academy carries no ad units for anyone who does not ask for them. */
+import { ADSENSE_CLIENT, ADSENSE_SLOT } from './ads.mjs';
 
 /** A labelled ad unit. */
 export function AdSlot(label = 'Sponsored') {

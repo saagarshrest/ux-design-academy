@@ -62,8 +62,8 @@ Build-time environment variables, all optional:
 | `SITE_URL` | Public origin used for canonical links, the sitemap and structured data. Defaults to the Vercel production domain, or `https://saagarshrest.com.np` outside Vercel |
 | `GA_ID` | Google Analytics measurement ID. Without it a standalone build loads no analytics at all |
 | `OG_IMAGE_URL` | Absolute URL of the social preview image |
-| `ADSENSE_CLIENT` | AdSense publisher id (`ca-pub-...`). Without it the site loads no ad code at all |
-| `ADSENSE_SLOT` | AdSense ad unit id. Needs `ADSENSE_CLIENT`; a labelled slot then appears on the home page and under each lesson video |
+| `ADSENSE_CLIENT` | AdSense publisher id. Defaults to the one in `learn-src/ads.mjs` |
+| `ADSENSE_SLOT` | AdSense ad unit id. Without it the loader still runs, so AdSense auto ads work; with it a labelled slot appears on the home page and under each lesson video |
 
 ### The custom domain
 
@@ -83,6 +83,7 @@ For AdSense, the domain that has to be approved is `saagarshrest.com.np` — a s
 |---|---|
 | `learn-src/content/` | All content, kept separate from presentation |
 | `learn-src/content/videos.mjs` | The companion video library, one entry per written lesson |
+| `learn-src/ads.mjs` | The AdSense publisher id and the loader script |
 | `learn-src/types.d.ts` | TypeScript types for the content model (checked through JSDoc `@ts-check`) |
 | `learn-src/components.mjs` | Presentation components that return HTML strings |
 | `learn-src/pages.mjs` | One template per route |

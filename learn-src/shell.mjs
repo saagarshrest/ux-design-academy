@@ -26,14 +26,9 @@ const GA_ID = String(process.env.GA_ID || '').trim();
    link never points at a file that does not exist. */
 export const OG_IMAGE = String(process.env.OG_IMAGE_URL || '');
 
-/* Ads. Nothing is loaded unless a publisher id is set, so the academy
-   stays ad-free for anyone who does not ask for ads. ADSENSE_CLIENT is
-   the publisher id (ca-pub-...), ADSENSE_SLOT is an optional ad unit. */
-export const ADSENSE_CLIENT = String(process.env.ADSENSE_CLIENT || '').trim();
-export const ADSENSE_SLOT = String(process.env.ADSENSE_SLOT || '').trim();
-
-/** The AdSense loader, or an empty string when ads are switched off. */
-export const adsenseScript = () => (ADSENSE_CLIENT ? `<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${encodeURIComponent(ADSENSE_CLIENT)}" crossorigin="anonymous"></script>` : '');
+/* Ads. The loader is added to every page; the ids live in ads.mjs. */
+import { ADSENSE_CLIENT, ADSENSE_SLOT, adsenseScript } from './ads.mjs';
+export { ADSENSE_CLIENT, ADSENSE_SLOT, adsenseScript };
 
 /** Return the outer HTML of the element whose opening tag starts at `start`, by balancing tags of that name. */
 function balanced(/** @type {string} */ src, /** @type {number} */ start, /** @type {string} */ tag) {
