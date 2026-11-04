@@ -389,7 +389,7 @@ export default {
 <h3>Involve people early</h3>
 <p>Stakeholders who watch sessions live are far more likely to act. Invite them and give them a role, such as note-taking.</p>`,
     why: `
-<p>Findings that are ignored are wasted research. Clear, honest and well-targeted communication builds trust in research, wins support for fixes and helps teams make better decisions faster.</p>`,
+<p>Findings that are ignored are wasted research, and wasted participants' time. Clear, honest and well-targeted communication builds trust in research, wins support for fixes and helps teams make better decisions faster. Over time, a reputation for reliable, useful findings gives you and your research a stronger voice in product decisions.</p>`,
     example: `
 <p>A designer sends a 40-page report after testing a new onboarding flow. Nobody reads past page three and the critical issues stay unfixed.</p>
 <p>For the next round, they invite the product manager and two engineers to watch sessions, share a one-page summary with the top four findings and a two-minute highlight reel, and keep a detailed log for the team. The critical issue gets fixed the same week, because everyone saw participants struggle.</p>`,
