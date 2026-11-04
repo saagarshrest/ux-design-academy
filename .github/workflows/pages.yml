@@ -23,7 +23,7 @@ jobs:
         with:
           node-version: 22
       - name: Build site
-        run: npm run build:vercel
+        run: npm run build:pages
         env:
           SITE_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}
           BASE_PATH: /${{ github.event.repository.name }}

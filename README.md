@@ -4,7 +4,7 @@ _Learn design by understanding, practising, and building._
 
 A free, self-guided learning path from complete beginner to portfolio-ready junior UI/UX designer. It is a static site generated from plain JavaScript content files, with no dependencies and no backend.
 
-The live version is at **[ux-academy-five.vercel.app](https://ux-academy-five.vercel.app/)**. It is a standalone website: it brings its own navigation, styles and scripts, and depends on nothing else.
+The live version is at **[saagarshrest.github.io/ux-design-academy](https://saagarshrest.github.io/ux-design-academy/)**. It is a standalone website: it brings its own navigation, styles and scripts, and depends on nothing else.
 
 ## What's inside
 
@@ -33,13 +33,13 @@ npm run serve   # then open http://localhost:8000/learn/
 
 `npm run check` validates the content without writing any files.
 
-`npm run build:vercel` builds the complete site into `/dist` (pages, stylesheet, scripts, favicon, `index.html`, `robots.txt`, `sitemap.xml` and `404.html`). `npm run preview` builds it and serves `/dist` on <http://localhost:8000/learn/>.
+`npm run build:pages` builds the complete site into `/dist` (pages, stylesheet, scripts, favicon, `index.html`, `robots.txt`, `sitemap.xml` and `404.html`). `npm run preview` builds it and serves `/dist` on <http://localhost:8000/>.
 
-## Deploying to Vercel
+## Deploying to GitHub Pages
 
-The repository is ready to deploy: `vercel.json` builds the site with `npm run build:vercel` and publishes `/dist`. Import the repository in Vercel and deploy; no settings need changing.
+GitHub Pages deploys the site automatically from the `main` branch through [`.github/workflows/pages.yml`](.github/workflows/pages.yml). The workflow builds the complete site with `npm run build:pages` and publishes `/dist`.
 
-A deploy build serves the academy **from the root of the domain**, so the website is simply `https://your-domain/`. The pages are written without the `/learn` prefix and the links inside them are rewritten to match. The default build writes the same site under `/learn`, for a host that serves the academy from a sub-path.
+The Pages build serves the academy from the repository sub-path, so the website is `https://your-name.github.io/your-repository/`. The pages are written without the `/learn` prefix and the links inside them are rewritten to match. The default build writes the same site under `/learn`, for local development.
 
 What the deploy build produces:
 
@@ -59,23 +59,13 @@ Build-time environment variables, all optional:
 
 | Variable | Effect |
 |---|---|
-| `SITE_URL` | Public origin used for canonical links, the sitemap and structured data. Defaults to the Vercel production domain, or `http://localhost:8000` for a local build |
+| `SITE_URL` | Public origin used for canonical links, the sitemap and structured data. Defaults to `http://localhost:8000` for a local build |
 | `GA_ID` | Google Analytics measurement ID. Without it a standalone build loads no analytics at all |
 | `OG_IMAGE_URL` | Absolute URL of the social preview image |
 | `ADSENSE_CLIENT` | AdSense publisher id. Defaults to the one in `learn-src/ads.mjs` |
 | `ADSENSE_SLOT` | AdSense ad unit id. Without it the loader still runs, so AdSense auto ads work; with it a labelled slot appears on the home page and under each lesson video |
 
-### The domain
-
-The academy is a website of its own. It has no domain of its own on Vercel yet, so it is served from the project's own address:
-
-**https://ux-academy-five.vercel.app/**
-
-To give it a real domain, attach one to the project (`vercel domains add <domain> <project>`) and add the DNS record the registrar asks for. A subdomain of a domain you already own is the easiest option, and it is covered by that domain's AdSense approval. The `*.vercel.app` address keeps working as an alias either way.
-
-Whichever domain is in use, `SITE_URL` sets the origin the build writes into the canonical links, the sitemap and `robots.txt`. Leave it unset on Vercel and the build follows the project domain automatically; set it when the site is served from somewhere else.
-
-Note that AdSense only accepts a registrable domain, so the site cannot be approved while it lives on a `*.vercel.app` address. The `ads.txt` file for the approved domain belongs at the root of that domain.
+The `SITE_URL` variable sets the origin the build writes into canonical links, the sitemap and `robots.txt`. The Pages workflow sets it automatically for the repository URL.
 
 ## How it is built
 

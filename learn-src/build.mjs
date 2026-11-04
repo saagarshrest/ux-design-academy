@@ -44,8 +44,7 @@ const OUT = DEPLOY ? DIST : join(ROOT, 'learn');
 const stripBase = (/** @type {string} */ p) => (DEPLOY ? p.replace(/^\/learn/, '') : p);
 
 /* The public origin. shell.mjs reads it from the environment: SITE_URL
-   wins, otherwise it follows the Vercel project, and a local build
-   claims only the local address. */
+   wins, otherwise a local build claims only the local address. */
 const { page, SITE, chrome } = await import('./shell.mjs');
 const P = await import('./pages.mjs');
 

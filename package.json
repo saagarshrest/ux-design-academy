@@ -6,11 +6,11 @@
   "type": "module",
   "scripts": {
     "build": "node learn-src/build.mjs",
-    "build:vercel": "node learn-src/build.mjs --deploy",
+    "build:pages": "node learn-src/build.mjs --deploy",
     "check": "node learn-src/build.mjs --check",
     "test": "node --test \"learn-src/test/*.test.mjs\"",
     "serve": "python3 -m http.server 8000",
-    "preview": "node learn-src/build.mjs --deploy && python3 -m http.server 8000 --directory dist"
+    "preview": "npm run build:pages && python3 -m http.server 8000 --directory dist"
   },
   "engines": { "node": ">=22" }
 }

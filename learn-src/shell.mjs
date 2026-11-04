@@ -10,11 +10,9 @@ import { esc } from './components.mjs';
 import { AppDock } from './components.mjs';
 
 /* The public origin of the site. Set SITE_URL to override it; otherwise
-   it follows the Vercel project the build is running in, and falls back
-   to the local server so a local build never claims a public address. */
+   the local server is used so a local build never claims a public address. */
 export const SITE = String(
   process.env.SITE_URL
-  || (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : '')
   || 'http://localhost:8000',
 ).replace(/\/+$/, '');
 
