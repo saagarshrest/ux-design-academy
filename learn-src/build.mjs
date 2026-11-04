@@ -53,10 +53,16 @@ const P = await import('./pages.mjs');
    at the root of the domain, so "/learn/courses/" becomes "/courses/".
    Only link targets are touched, never prose. */
 const escapeRe = (/** @type {string} */ s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-const rebaseHtml = (/** @type {string} */ text) => (DEPLOY
-  ? text.replace(new RegExp(`${escapeRe(SITE)}/learn/`, 'g'), `${SITE}/`).replace(/="\/learn\//g, '="/')
-  : text);
-const rebaseCode = (/** @type {string} */ text) => (DEPLOY ? text.replace(/(['"])\/learn\//g, '$1/') : text);
+/* BASE_PATH serves the deploy build from a sub-path, e.g. GitHub Pages at
+   https://user.github.io/repo/ needs BASE_PATH=/repo. Empty means the root. */
+const BASE = DEPLOY ? String(process.env.BASE_PATH || '').replace(/\/+$/, '') : '';
+const rebaseHtml = (/** @type {string} */ text) => {
+  if (!DEPLOY) return text;
+  let out = text.replace(new RegExp(`${escapeRe(SITE)}/learn/`, 'g'), `${SITE}/`).replace(/="\/learn\//g, '="/');
+  if (BASE) out = out.replace(/(=")\/(?!\/)/g, `$1${BASE}/`);
+  return out;
+};
+const rebaseCode = (/** @type {string} */ text) => (DEPLOY ? text.replace(/(['"`])\/learn\//g, `$1${BASE}/`) : text);
 
 /** @typedef {import('./types').Course} Course */
 /** @typedef {import('./types').Lesson} Lesson */
