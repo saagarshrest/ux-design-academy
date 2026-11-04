@@ -31,8 +31,21 @@ export const extLink = (/** @type {string} */ href, /** @type {string} */ label,
 
 /* ---------------------------------------------------------------- header */
 
+/** Line icons for the navigation, drawn on a 24px grid. */
+const NAV_ICON = {
+  overview: '<path d="M3 10.5 12 3l9 7.5"/><path d="M5.5 9.5V20h13V9.5"/><path d="M10 20v-5h4v5"/>',
+  roadmap: '<circle cx="6" cy="6" r="2.2"/><circle cx="18" cy="12" r="2.2"/><circle cx="6" cy="18" r="2.2"/><path d="M8 7.2 16 11M8 16.8 16 13"/>',
+  courses: '<path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5z"/><path d="M4 20.5A2.5 2.5 0 0 0 6.5 23H20v-5"/><path d="M9 8h7M9 11.5h5"/>',
+  practice: '<path d="m14.5 4 5.5 5.5L9.5 20H4v-5.5z"/><path d="m12.5 6 5.5 5.5"/>',
+  projects: '<rect x="3" y="7" width="18" height="13" rx="2.5"/><path d="M8.5 7V5a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v2"/><path d="M3 13h18"/>',
+  resources: '<path d="M12 3 3 7.5l9 4.5 9-4.5z"/><path d="m3 12 9 4.5 9-4.5"/><path d="m3 16.5 9 4.5 9-4.5"/>',
+  glossary: '<path d="M5 20V5.5A2.5 2.5 0 0 1 7.5 3H19v14H7.5A2.5 2.5 0 0 0 5 19.5"/><path d="m9 13 2.5-6 2.5 6M9.8 11h3.4"/>',
+  career: '<circle cx="12" cy="9" r="5.5"/><path d="m8.5 13.5-1.5 7.5 5-2.5 5 2.5-1.5-7.5"/>',
+  saved: '<path d="M6 3h12v18l-6-4.5L6 21z"/>',
+};
+
 const ACADEMY_NAV = [
-  ['overview', '/learn/', 'Overview'],
+  ['overview', '/learn/', 'Home'],
   ['roadmap', '/learn/roadmap/', 'Roadmap'],
   ['courses', '/learn/courses/', 'Courses'],
   ['practice', '/learn/practice/', 'Practice'],
@@ -43,23 +56,41 @@ const ACADEMY_NAV = [
   ['saved', '/learn/saved/', 'My learning'],
 ];
 
-/** AcademyHeader + AcademyNavigation: the academy's own bar under the site nav. */
+const navIcon = (/** @type {string} */ key, size = 20) =>
+  `<svg viewBox="0 0 24 24" width="${size}" height="${size}" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${NAV_ICON[key] || ''}</svg>`;
+
+/** The academy logo: a stack of three playful shapes. */
+const LOGO = `<span class="la-logo" aria-hidden="true"><svg viewBox="0 0 40 40" width="40" height="40"><rect width="40" height="40" rx="12" fill="#6D28D9"/><circle cx="14" cy="15" r="6" fill="#FBBF24"/><rect x="21" y="9" width="11" height="11" rx="3" fill="#F472B6"/><path d="M9 31 16 22l7 9z" fill="#2DD4BF"/><rect x="25" y="24" width="7" height="7" rx="3.5" fill="#fff"/></svg></span>`;
+
+/**
+ * AcademyHeader + AcademyNavigation: a sidebar on wide screens, a top bar
+ * everywhere, and a scrolling row of section chips on narrow screens.
+ */
 export function AcademyHeader(/** @type {string} */ active, query = '') {
-  const links = ACADEMY_NAV.map(([key, href, label]) =>
-    `<a href="${href}"${key === active ? ' aria-current="page"' : ''}>${label}</a>`).join('');
+  const links = (/** @type {string} */ cls) => ACADEMY_NAV.map(([key, href, label]) =>
+    `<a class="${cls}" data-nav="${key}" href="${href}"${key === active ? ' aria-current="page"' : ''}><span class="${cls}-ic">${navIcon(key)}</span><span>${label}</span></a>`).join('');
   return `
-<div class="la-bar">
-  <div class="la-bar__in">
-    <a class="la-bar__brand" href="/learn/"><span class="la-bar__mark" aria-hidden="true">UX</span><span>Design Academy</span></a>
-    <nav class="la-bar__nav" aria-label="Academy">${links}</nav>
-    <form class="la-bar__search" role="search" action="/learn/search/" method="get">
+<aside class="la-side">
+  <a class="la-side__brand" href="/learn/">${LOGO}<span class="la-side__name"><b>Design Academy</b><small>Learn UI/UX by doing</small></span></a>
+  <nav class="la-side__nav" aria-label="Academy">${links('la-side__a')}</nav>
+  <a class="la-side__card" href="/learn/saved/">
+    ${ProgressRing('core', 'core', 'sm')}
+    <span class="la-side__card-t"><b>Your journey</b><small>Every lesson you finish fills the ring.</small></span>
+  </a>
+</aside>
+<header class="la-top">
+  <div class="la-top__in">
+    <a class="la-top__brand" href="/learn/">${LOGO}<span>Design Academy</span></a>
+    <form class="la-top__search" role="search" action="/learn/search/" method="get">
       <label class="la-sr" for="la-bar-q">Search the academy</label>
-      <input id="la-bar-q" name="q" type="search" value="${esc(query)}" placeholder="Search lessons, terms, resources" autocomplete="off">
-      <button type="submit" class="la-bar__go"><span class="la-sr">Search</span><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></button>
+      <svg class="la-top__glass" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      <input id="la-bar-q" name="q" type="search" value="${esc(query)}" placeholder="Search lessons, terms, resources…" autocomplete="off">
+      <button type="submit" class="la-top__go">Search</button>
     </form>
-    <a class="la-bar__pill" href="/learn/saved/" data-app-progress><span class="la-bar__pill-dot" aria-hidden="true"></span><span data-app-progress-text>My progress</span></a>
+    <a class="la-top__pill" href="/learn/saved/" data-app-progress><span class="la-top__pill-dot" aria-hidden="true"></span><span data-app-progress-text>My progress</span></a>
   </div>
-</div>`;
+  <nav class="la-chipnav" aria-label="Academy sections">${links('la-chipnav__a')}</nav>
+</header>`;
 }
 
 /** @param {{ label: string, href?: string }[]} items */

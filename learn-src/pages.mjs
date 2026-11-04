@@ -38,26 +38,29 @@ export function homePage(d) {
   ];
   const body = `
 <header class="la-hero la-hero--home">
+  <span class="la-blob la-blob--1" aria-hidden="true"></span><span class="la-blob la-blob--2" aria-hidden="true"></span><span class="la-blob la-blob--3" aria-hidden="true"></span>
   <div class="la-wrap la-hero__grid">
     <div>
-      <p class="la-eyebrow">Free and self-guided · no account needed</p>
-      <h1 class="la-h1 la-h1--xl">UI/UX Design <em>Academy.</em></h1>
-      <p class="la-tagline">Learn design by understanding, practising, and building.</p>
+      <p class="la-badge"><span aria-hidden="true">✦</span> Free and self-guided · no account needed</p>
+      <h1 class="la-h1 la-h1--xl">Learn UI/UX design the <span class="la-hl">fun</span> way.</h1>
+      <p class="la-tagline">Understand it. Practise it. Build it.</p>
       <p class="la-lead">A structured path from complete beginner to portfolio-ready junior designer. Every lesson pairs a short video with a written explanation, a realistic example, a knowledge check and an exercise you can score against a rubric.</p>
       <div class="la-actions">
-        <a class="la-btn la-btn--lg" href="${lessonUrl(d.first.slug)}" data-start-link>Start learning <span aria-hidden="true">→</span></a>
+        <a class="la-btn la-btn--lg la-btn--pop" href="${lessonUrl(d.first.slug)}" data-start-link>Start learning <span aria-hidden="true">→</span></a>
         <a class="la-btn la-btn--ghost la-btn--lg" href="/learn/courses/">Browse courses</a>
       </div>
-      <ul class="la-facts la-facts--row">${facts.map(([n, l]) => `<li><b>${n}</b><span>${esc(l)}</span></li>`).join('')}</ul>
+      <ul class="la-facts la-facts--row">${facts.map(([n, l], i) => `<li class="la-fact la-fact--${i + 1}"><b>${n}</b><span>${esc(l)}</span></li>`).join('')}</ul>
     </div>
     <aside class="la-dash" aria-labelledby="dash-h">
       <div class="la-dash__card">
-        <p class="la-side-card__h" id="dash-h">Your learning</p>
+        <div class="la-dash__head"><p class="la-dash__h" id="dash-h">Your learning</p><span class="la-dash__chip">Saved in this browser</span></div>
         <div class="la-dash__ring">${ProgressRing('core', 'core done', 'lg')}</div>
         <p class="la-dash__note">Progress is saved in this browser only. It does not sync between devices.</p>
         <div data-next-slot></div>
         <a class="la-btn la-btn--ghost la-btn--block" href="/learn/saved/">Open My learning</a>
       </div>
+      <span class="la-sticker la-sticker--1" aria-hidden="true">Aa</span>
+      <span class="la-sticker la-sticker--2" aria-hidden="true">★</span>
     </aside>
   </div>
 </header>
@@ -99,7 +102,8 @@ export function homePage(d) {
 <section class="la-band" aria-labelledby="paths-h">
   <div class="la-wrap">
     <h2 id="paths-h" class="la-h2">Choose a <em>path.</em></h2>
-    <div class="la-grid la-grid--3">${d.paths.map((p) => `<article class="la-card la-path">
+    <div class="la-grid la-grid--3">${d.paths.map((p, i) => `<article class="la-card la-path la-path--${(i % 3) + 1}">
+      <span class="la-path__ic" aria-hidden="true">${['✏️', '🧭', '🚀'][i % 3]}</span>
       <p class="la-stage">${esc(p.who)}</p>
       <h3 class="la-card__title"><a class="la-stretch" href="/learn/roadmap/#path-${p.slug}">${esc(p.title)}</a></h3>
       <p class="la-card__text">${esc(p.description)}</p>
@@ -129,10 +133,10 @@ export function homePage(d) {
   <div class="la-wrap">
     <h2 id="quick-h" class="la-h2">Quick <em>reference.</em></h2>
     <div class="la-quick">
-      <a href="/learn/glossary/"><b>Glossary</b><span>${d.glossary.length} terms with examples</span></a>
-      <a href="/learn/resources/#templates"><b>Templates</b><span>${d.templates.length} copyable templates and checklists</span></a>
-      <a href="/learn/resources/"><b>Resources</b><span>${d.resources.length} trusted external references</span></a>
-      <a href="/learn/career/"><b>Career guide</b><span>Portfolio, interviews and freelancing</span></a>
+      <a href="/learn/glossary/"><i aria-hidden="true">Aa</i><b>Glossary</b><span>${d.glossary.length} terms with examples</span></a>
+      <a href="/learn/resources/#templates"><i aria-hidden="true">▤</i><b>Templates</b><span>${d.templates.length} copyable templates and checklists</span></a>
+      <a href="/learn/resources/"><i aria-hidden="true">↗</i><b>Resources</b><span>${d.resources.length} trusted external references</span></a>
+      <a href="/learn/career/"><i aria-hidden="true">★</i><b>Career guide</b><span>Portfolio, interviews and freelancing</span></a>
     </div>
   </div>
 </section>`;

@@ -297,7 +297,7 @@ if (!CHECK_ONLY) {
   }
   // Site-wide not-found page (GitHub Pages serves /404.html for any missing path).
   const notFound = page(chrome, {
-    path: '/404.html', title: 'Page not found', noindex: true, version, header: '',
+    path: '/404.html', title: 'Page not found', noindex: true, version, header: AcademyHeader(''),
     description: 'The page you were looking for does not exist.',
     body: `<header class="la-hero"><div class="la-wrap la-narrow">
   <p class="la-eyebrow">Error 404</p>
